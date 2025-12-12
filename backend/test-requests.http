@@ -1,0 +1,29 @@
+### 1. Yeni Kitap Ekle
+POST http://127.0.0.1:8080/api/books
+Content-Type: application/json
+
+{
+  "title": "Simyacı",
+  "author": "Paulo Coelho",
+  "isbn": "978-975-07-2643-9",
+  "publicationYear": 1988,
+  "genre": "Roman"
+}
+
+### 2. Kitapları Listele
+GET http://127.0.0.1:8080/api/books
+
+### 3. Yeni Film Ekle
+POST http://127.0.0.1:8080/api/movies
+Content-Type: application/json
+
+{
+  "title": "Inception",
+  "description": "Rüyalar içinde rüya...",
+  "director": "Christopher Nolan",
+  "durationMinutes": 148,
+  "imdbScore": 8.8
+}
+
+### 4. Filmleri Listele
+GET http://127.0.0.1:8080/api/movies
