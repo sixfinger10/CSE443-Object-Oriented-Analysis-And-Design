@@ -5,7 +5,7 @@ Content-Type: application/json
 {
   "title": "Simyacı",
   "author": "Paulo Coelho",
-  "isbn": "978-975-07-2643-9",
+  "isbn": "111-222-333-444-5",
   "publicationYear": 1988,
   "genre": "Roman"
 }
@@ -27,3 +27,15 @@ Content-Type: application/json
 
 ### 4. Filmleri Listele
 GET http://127.0.0.1:8080/api/movies
+
+### 5. ISBN ile Google'dan Kitap Çek (Madonna - Kürk Mantolu)
+POST http://127.0.0.1:8080/api/books/fetch/9789750726439
+
+### 6. ISBN ile Google'dan Kitap Çek (Harry Potter ve Felsefe Taşı)
+POST http://127.0.0.1:8080/api/books/fetch/9780747532743
+
+### 7. Gerçek Kürk Mantolu Madonna (YKY Yayınları)
+POST http://127.0.0.1:8080/api/books/fetch/9789753638029
+
+### 8. Harry Potter (Farklı Baskı - US Edition)
+POST http://127.0.0.1:8080/api/books/fetch/9780590353427
