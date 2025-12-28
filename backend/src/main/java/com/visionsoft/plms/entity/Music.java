@@ -10,19 +10,18 @@ import lombok.EqualsAndHashCode;
 @Data
 @EqualsAndHashCode(callSuper = true)
 @Entity
-@Table(name = "movies")
+@Table(name = "music")
 @PrimaryKeyJoinColumn(name = "id")
-public class Movie extends LibraryItem {
+public class Music extends LibraryItem {
 
-    private String director;
-    private Integer durationMinutes;
-    private String imdbId;
-    private Double imdbScore;
-    private Integer releaseYear;
+    private String artist;
+    private String album;
     private String genre;
-    private String castMembers; // Oyuncuları virgülle ayırıp string tutalım
+    private Integer durationSeconds;
+    private Integer trackCount;
+    private Integer releaseYear;
 
-    public Movie() {
-        this.setType(ItemType.MOVIE);
+    public Music() {
+        this.setType(ItemType.MUSIC);
     }
 }
