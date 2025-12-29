@@ -1,0 +1,14 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(mvn compile:*)",
+      "Bash(dir:*)",
+      "Bash(./mvnw compile:*)",
+      "Bash(mvnw.cmd compile:*)",
+      "Bash(mvn clean compile:*)",
+      "Bash(where:*)",
+      "Bash(\"C:/Program Files/JetBrains/IntelliJ IDEA 2025.3.1/plugins/maven/lib/maven3/bin/mvn.cmd\" -f \"C:/Users/USER/IdeaProjects/CSE443-Object-Oriented-Analysis-And-Design/backend/pom.xml\" test)",
+      "Bash(\"C:/Program Files/JetBrains/IntelliJ IDEA 2025.3.1/plugins/maven/lib/maven3/bin/mvn.cmd\" -f \"C:/Users/USER/IdeaProjects/CSE443-Object-Oriented-Analysis-And-Design/backend/pom.xml\" clean test)"
+    ]
+  }
+}

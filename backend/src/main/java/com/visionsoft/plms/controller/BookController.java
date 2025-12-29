@@ -34,6 +34,10 @@ public class BookController {
     // --- YENİ ÖZELLİK: ISBN ile Getir ---
     @PostMapping("/fetch/{isbn}")
     public Book fetchAndSaveGoogleBook(@PathVariable String isbn) {
-        return bookService.saveBookByIsbn(isbn);
+        // TODO: İleride giriş yapmış kullanıcının ID'sini (Security Context) alacağız.
+        // Şimdilik test için veritabanındaki 1 ID'li kullanıcıyı kullanıyoruz.
+        Long dummyUserId = 1L;
+
+        return bookService.saveBookByIsbn(isbn,dummyUserId);
     }
 }
