@@ -6,8 +6,10 @@ import com.visionsoft.plms.entity.User;
 import com.visionsoft.plms.repository.PasswordResetTokenRepository;
 import com.visionsoft.plms.repository.UserRepository;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+
 
 import java.time.LocalDateTime;
 import java.util.Optional;
@@ -25,6 +27,9 @@ public class AuthService {
     @Autowired
     private EmailService emailService;
     
+    @Autowired
+    private PasswordEncoder passwordEncoder;
+    
     // Sign In
     public AuthResponse signIn(SignInRequest request) {
         Optional<User> userOpt = userRepository.findByUsername(request.getUsernameOrEmail());
@@ -39,8 +44,8 @@ public class AuthService {
         
         User user = userOpt.get();
         
-        // TODO: Şifre kontrolü (BCrypt ile - sonra ekleyeceğiz)
-        if (!user.getPassword().equals(request.getPassword())) {
+        // Şifre kontrolü (BCrypt ile)
+        if (!passwordEncoder.matches(request.getPassword(), user.getPassword())) {
             return new AuthResponse(false, "Invalid password");
         }
         
@@ -63,8 +68,8 @@ public class AuthService {
         User user = new User();
         user.setUsername(request.getUsername());
         user.setEmail(request.getEmail());
-        // TODO: Şifreyi hash'le (BCrypt ile - sonra ekleyeceğiz)
-        user.setPassword(request.getPassword());
+        // Şifreyi hash'le
+        user.setPassword(passwordEncoder.encode(request.getPassword()));
         user.setCreatedAt(LocalDateTime.now());
         user.setUpdatedAt(LocalDateTime.now());
         
@@ -148,8 +153,8 @@ public class AuthService {
         }
         
         User user = userOpt.get();
-        // TODO: Şifreyi hash'le (BCrypt ile - sonra ekleyeceğiz)
-        user.setPassword(request.getNewPassword());
+        // Şifreyi hash'le
+        user.setPassword(passwordEncoder.encode(request.getNewPassword()));
         user.setUpdatedAt(LocalDateTime.now());
         
         userRepository.save(user);
@@ -191,7 +196,7 @@ public class AuthService {
         
         // Password güncelleme (opsiyonel)
         if (request.getPassword() != null && !request.getPassword().isEmpty()) {
-            user.setPassword(request.getPassword());
+            user.setPassword(passwordEncoder.encode(request.getPassword()));
         }
         
         user.setUpdatedAt(LocalDateTime.now());
