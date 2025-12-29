@@ -22,6 +22,9 @@ public class AuthService {
     @Autowired
     private PasswordResetTokenRepository resetTokenRepository;
     
+    @Autowired
+    private EmailService emailService;
+    
     // Sign In
     public AuthResponse signIn(SignInRequest request) {
         Optional<User> userOpt = userRepository.findByUsername(request.getUsernameOrEmail());
@@ -98,10 +101,14 @@ public class AuthService {
         
         resetTokenRepository.save(token);
         
-        // TODO: Email gönder (sonra ekleyeceğiz)
-        System.out.println("Reset Code: " + resetCode);
+        // Email gönder
+        try {
+            emailService.sendResetCode(request.getEmail(), resetCode);
+        } catch (Exception e) {
+            return new AuthResponse(false, "Failed to send email. Please try again later.");
+        }
         
-        return new AuthResponse(true, "Reset code sent to your email", resetCode);
+        return new AuthResponse(true, "Reset code sent to your email");
     }
     
     // Verify Reset Code
@@ -155,13 +162,6 @@ public class AuthService {
         return new AuthResponse(true, "Password reset successful");
     }
     
-    // 6 haneli kod oluştur
-    private String generateResetCode() {
-        Random random = new Random();
-        int code = 100000 + random.nextInt(900000);
-        return String.valueOf(code);
-    }
-
     // Update Account
     @Transactional
     public AuthResponse updateAccount(Long userId, SignUpRequest request) {
@@ -212,5 +212,12 @@ public class AuthService {
         userRepository.deleteById(userId);
         
         return new AuthResponse(true, "Account deleted successfully");
+    }
+    
+    // 6 haneli kod oluştur
+    private String generateResetCode() {
+        Random random = new Random();
+        int code = 100000 + random.nextInt(900000);
+        return String.valueOf(code);
     }
 }
