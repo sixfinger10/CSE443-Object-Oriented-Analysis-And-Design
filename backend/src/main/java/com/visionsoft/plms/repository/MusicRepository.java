@@ -12,7 +12,19 @@ public interface MusicRepository extends JpaRepository<Music, Long> {
     @Query("SELECT COUNT(m) FROM Music m WHERE m.user.id = :userId")
     Long countByUserId(@Param("userId") Long userId);
     
-    // Duplicate check için
+    // Duplicate check için - Title + Artist
     @Query("SELECT m FROM Music m WHERE m.user.id = :userId AND m.title = :title AND m.artist = :artist")
     List<Music> findByUserIdAndTitleAndArtist(@Param("userId") Long userId, @Param("title") String title, @Param("artist") String artist);
+    
+    // Duplicate check için - TÜM FIELD'LAR (YENİ!)
+    @Query("SELECT m FROM Music m WHERE m.user.id = :userId " +
+           "AND m.title = :title " +
+           "AND m.artist = :artist " +
+           "AND (m.album = :album OR (m.album IS NULL AND :album IS NULL))")
+    List<Music> findExactDuplicate(
+        @Param("userId") Long userId,
+        @Param("title") String title,
+        @Param("artist") String artist,
+        @Param("album") String album
+    );
 }
