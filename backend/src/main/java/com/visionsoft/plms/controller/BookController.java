@@ -38,4 +38,16 @@ public class BookController {
         Book savedBook = bookService.addBook(request, userId);
         return ResponseEntity.ok(savedBook);
     }
+
+    // --- SİLME ENDPOINT'İ ---
+    // DELETE /api/books/{id}
+    @DeleteMapping("/{id}")
+    public ResponseEntity<String> deleteBook(
+            @PathVariable Long id,
+            @RequestHeader("X-User-Id") Long userId) {
+
+        bookService.deleteBook(id, userId);
+
+        return ResponseEntity.ok("Kitap başarıyla silindi. ID: " + id);
+    }
 }

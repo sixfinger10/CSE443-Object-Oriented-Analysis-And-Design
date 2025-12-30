@@ -275,4 +275,19 @@ public class BookService {
             throw new RuntimeException("Hata: " + e.getMessage());
         }
     }
+
+    // --- SİLME METODU ---
+    public void deleteBook(Long bookId, Long userId) {
+        // 1. Kitabı bul, yoksa hata ver
+        Book book = bookRepository.findById(bookId)
+                .orElseThrow(() -> new RuntimeException("Silinecek kitap bulunamadı (ID: " + bookId + ")"));
+
+        // 2. Güvenlik Kontrolü: Bu kitap gerçekten silmek isteyen kullanıcıya mı ait?
+        if (!book.getUser().getId().equals(userId)) {
+            throw new RuntimeException("HATA: Bu kitabı silme yetkiniz yok! Sadece kendi kitaplarınızı silebilirsiniz.");
+        }
+
+        // 3. Silme İşlemi
+        bookRepository.delete(book);
+    }
 }
