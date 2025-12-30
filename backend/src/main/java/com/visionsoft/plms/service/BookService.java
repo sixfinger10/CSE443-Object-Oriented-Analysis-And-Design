@@ -40,7 +40,8 @@ public class BookService {
 
         // DURUM 1: Kullanıcı ISBN girmiş
         if (request.getIsbn() != null && !request.getIsbn().isEmpty()) {
-            return saveBookByIsbn(request.getIsbn(), userId);
+            // --- GÜNCELLENDİ: Favorite bilgisini de gönderiyoruz ---
+            return saveBookByIsbn(request.getIsbn(), userId, request.getFavorite());
         }
 
         // DURUM 2: Kullanıcı ISBN girmemiş (İsimden Arama)
@@ -130,6 +131,9 @@ public class BookService {
             bookToSave.setType(ItemType.BOOK);
             bookToSave.setStatus(ItemStatus.WISHLIST);
 
+            // --- YENİ EKLENEN: Favorite Durumu ---
+            bookToSave.setFavorite(request.getFavorite() != null ? request.getFavorite() : false);
+
             // Google bulamadıysa kullanıcının girdiklerini kullan
             if (!foundInGoogle || bookToSave.getTitle() == null) bookToSave.setTitle(request.getTitle());
             if (!foundInGoogle || bookToSave.getAuthor() == null) bookToSave.setAuthor(request.getAuthor());
@@ -146,12 +150,10 @@ public class BookService {
             if (request.getGenre() != null) bookToSave.setGenre(request.getGenre());
 
             // --- GÜVENLİK KİLİDİ (SON KONTROL) ---
-            // Sen "Sefiller" yazdın ama Google "ISBN:9789750719" buldu.
-            // Belki bu ISBN kütüphanende zaten vardır?
             if (bookToSave.getIsbn() != null) {
                 Optional<Book> duplicateIsbnCheck = bookRepository.findByIsbnAndUser(bookToSave.getIsbn(), currentUser);
                 if (duplicateIsbnCheck.isPresent()) {
-                    return duplicateIsbnCheck.get(); // Varsa onu dön, çift kayıt oluşturma.
+                    return duplicateIsbnCheck.get();
                 }
             }
 
@@ -214,7 +216,8 @@ public class BookService {
     }
 
     // --- SADECE ISBN İLE EKLEME (API) ---
-    public Book saveBookByIsbn(String isbn, Long userId) {
+    // --- GÜNCELLENDİ: Boolean isFavorite parametresi eklendi ---
+    public Book saveBookByIsbn(String isbn, Long userId, Boolean isFavorite) {
         User currentUser = getUserById(userId);
 
         var existingBook = bookRepository.findByIsbnAndUser(isbn, currentUser);
@@ -236,6 +239,10 @@ public class BookService {
             book.setUser(currentUser);
             book.setType(ItemType.BOOK);
             book.setStatus(ItemStatus.WISHLIST);
+
+            // --- YENİ EKLENEN: Favorite Durumu ---
+            book.setFavorite(isFavorite != null ? isFavorite : false);
+
             book.setIsbn(isbn);
             book.setTitle(volumeInfo.path("title").asText());
 
