@@ -8,6 +8,9 @@ public class AddBookRequest {
     private String title;
     private String description;
 
+    // --- YENİ EKLENEN KISIM ---
+    private Boolean favorite; // True gelirse favorilere ekle
+
     // Book (Özel)
     private String isbn;
     private String author;
