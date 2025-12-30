@@ -22,6 +22,6 @@ public class TVSeries extends LibraryItem {
     private Integer endYear; // Devam ediyorsa null olabilir
 
     public TVSeries() {
-        this.setType(ItemType.TV_SERIES);
+    this.type = ItemType.TV_SERIES;
     }
 }
