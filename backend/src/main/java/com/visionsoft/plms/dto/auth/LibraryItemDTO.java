@@ -21,12 +21,19 @@ public class LibraryItemDTO {
     // Book-specific fields
     private String author;
     private String isbn;
+    private String publisher;
+    private Integer publicationYear;
     private Integer pageCount;
+    private String bookGenre;
+    private String language;
     
     // Movie-specific fields
     private String director;
     private Integer duration;
     private Integer releaseYear;
+    
+    // TV Series-specific fields
+    private Integer startYear;
     
     // Music-specific fields
     private String artist;
@@ -137,12 +144,44 @@ public class LibraryItemDTO {
         this.isbn = isbn;
     }
     
+    public String getPublisher() {
+        return publisher;
+    }
+    
+    public void setPublisher(String publisher) {
+        this.publisher = publisher;
+    }
+    
+    public Integer getPublicationYear() {
+        return publicationYear;
+    }
+    
+    public void setPublicationYear(Integer publicationYear) {
+        this.publicationYear = publicationYear;
+    }
+    
     public Integer getPageCount() {
         return pageCount;
     }
     
     public void setPageCount(Integer pageCount) {
         this.pageCount = pageCount;
+    }
+    
+    public String getBookGenre() {
+        return bookGenre;
+    }
+    
+    public void setBookGenre(String bookGenre) {
+        this.bookGenre = bookGenre;
+    }
+    
+    public String getLanguage() {
+        return language;
+    }
+    
+    public void setLanguage(String language) {
+        this.language = language;
     }
     
     public String getDirector() {
@@ -167,6 +206,14 @@ public class LibraryItemDTO {
     
     public void setReleaseYear(Integer releaseYear) {
         this.releaseYear = releaseYear;
+    }
+    
+    public Integer getStartYear() {
+        return startYear;
+    }
+    
+    public void setStartYear(Integer startYear) {
+        this.startYear = startYear;
     }
     
     public String getArtist() {

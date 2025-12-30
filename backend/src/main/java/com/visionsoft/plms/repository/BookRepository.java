@@ -13,26 +13,41 @@ import java.util.Optional;
 @Repository
 public interface BookRepository extends JpaRepository<Book, Long> {
 
-    // --- 1. BİZİM YENİ YAZDIĞIMIZ METOT (BookService İçin) ---
-    // User nesnesi ile arama yapar
+    // --- 1. BookService İçin ---
     Optional<Book> findByIsbnAndUser(String isbn, User user);
 
-
-    // --- 2. DASHBOARD CONTROLLER İÇİN GEREKLİ METOT ---
-    // User ID'ye göre kitap sayısını getirir
+    // --- 2. Dashboard Controller İçin ---
     @Query("SELECT COUNT(b) FROM Book b WHERE b.user.id = :userId")
     Long countByUserId(@Param("userId") Long userId);
 
-
-    // --- 3. IMPORT/EXPORT SERVICE İÇİN GEREKLİ METOTLAR ---
-
-    // User ID ve ISBN'e göre liste getirir (Duplicate kontrolü için)
-    @Query("SELECT b FROM Book b WHERE b.user.id = :userId AND b.isbn = :isbn")
-    List<Book> findByUserIdAndIsbn(@Param("userId") Long userId, @Param("isbn") String isbn);
-
-    // User ID, Başlık ve Yazara göre liste getirir
+    // --- 3. Import/Export Service İçin ---
+    
+    // Duplicate check için - ISBN
+    List<Book> findByUserIdAndIsbn(Long userId, String isbn);
+    
+    // Duplicate check için - Title + Author
     @Query("SELECT b FROM Book b WHERE b.user.id = :userId AND b.title = :title AND b.author = :author")
-    List<Book> findByUserIdAndTitleAndAuthor(@Param("userId") Long userId,
-                                             @Param("title") String title,
-                                             @Param("author") String author);
+    List<Book> findByUserIdAndTitleAndAuthor(@Param("userId") Long userId, @Param("title") String title, @Param("author") String author);
+    
+    // Duplicate check için - TÜM FIELD'LAR (ISBN DAHİL!)
+    @Query("SELECT b FROM Book b WHERE b.user.id = :userId " +
+           "AND b.title = :title " +
+           "AND b.author = :author " +
+           "AND (b.isbn = :isbn OR (b.isbn IS NULL AND :isbn IS NULL)) " +
+           "AND (b.publisher = :publisher OR (b.publisher IS NULL AND :publisher IS NULL)) " +
+           "AND (b.pageCount = :pageCount OR (b.pageCount IS NULL AND :pageCount IS NULL)) " +
+           "AND (b.language = :language OR (b.language IS NULL AND :language IS NULL)) " +
+           "AND (b.genre = :genre OR (b.genre IS NULL AND :genre IS NULL)) " +
+           "AND (b.publicationYear = :publicationYear OR (b.publicationYear IS NULL AND :publicationYear IS NULL))")
+    List<Book> findExactDuplicate(
+        @Param("userId") Long userId,
+        @Param("title") String title,
+        @Param("author") String author,
+        @Param("isbn") String isbn,
+        @Param("publisher") String publisher,
+        @Param("pageCount") Integer pageCount,
+        @Param("language") String language,
+        @Param("genre") String genre,
+        @Param("publicationYear") Integer publicationYear
+    );
 }
