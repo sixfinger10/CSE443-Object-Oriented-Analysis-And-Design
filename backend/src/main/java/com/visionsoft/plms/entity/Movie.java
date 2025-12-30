@@ -23,6 +23,5 @@ public class Movie extends LibraryItem {
     private String castMembers; // Oyuncuları virgülle ayırıp string tutalım
 
     public Movie() {
-        this.setType(ItemType.MOVIE);
-    }
+  this.type = ItemType.MOVIE;    }
 }

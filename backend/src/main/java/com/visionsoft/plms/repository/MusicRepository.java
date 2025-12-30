@@ -5,9 +5,26 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
+import java.util.List;
 
 @Repository
 public interface MusicRepository extends JpaRepository<Music, Long> {
     @Query("SELECT COUNT(m) FROM Music m WHERE m.user.id = :userId")
     Long countByUserId(@Param("userId") Long userId);
+    
+    // Duplicate check için - Title + Artist
+    @Query("SELECT m FROM Music m WHERE m.user.id = :userId AND m.title = :title AND m.artist = :artist")
+    List<Music> findByUserIdAndTitleAndArtist(@Param("userId") Long userId, @Param("title") String title, @Param("artist") String artist);
+    
+    // Duplicate check için - TÜM FIELD'LAR (YENİ!)
+    @Query("SELECT m FROM Music m WHERE m.user.id = :userId " +
+           "AND m.title = :title " +
+           "AND m.artist = :artist " +
+           "AND (m.album = :album OR (m.album IS NULL AND :album IS NULL))")
+    List<Music> findExactDuplicate(
+        @Param("userId") Long userId,
+        @Param("title") String title,
+        @Param("artist") String artist,
+        @Param("album") String album
+    );
 }

@@ -22,14 +22,14 @@ public interface BookRepository extends JpaRepository<Book, Long> {
 
     // --- 3. Import/Export Service İçin ---
     
-    @Query("SELECT b FROM Book b WHERE b.user.id = :userId AND b.isbn = :isbn")
-    List<Book> findByUserIdAndIsbn(@Param("userId") Long userId, @Param("isbn") String isbn);
-
-    @Query("SELECT b FROM Book b WHERE b.user.id = :userId AND b.title = :title AND b.author = :author")
-    List<Book> findByUserIdAndTitleAndAuthor(@Param("userId") Long userId,
-                                             @Param("title") String title,
-                                             @Param("author") String author);
+    // Duplicate check için - ISBN
+    List<Book> findByUserIdAndIsbn(Long userId, String isbn);
     
+    // Duplicate check için - Title + Author
+    @Query("SELECT b FROM Book b WHERE b.user.id = :userId AND b.title = :title AND b.author = :author")
+    List<Book> findByUserIdAndTitleAndAuthor(@Param("userId") Long userId, @Param("title") String title, @Param("author") String author);
+    
+    // Duplicate check için - TÜM FIELD'LAR (ISBN DAHİL!)
     @Query("SELECT b FROM Book b WHERE b.user.id = :userId " +
            "AND b.title = :title " +
            "AND b.author = :author " +

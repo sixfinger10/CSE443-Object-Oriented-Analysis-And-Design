@@ -3,15 +3,17 @@ package com.visionsoft.plms.entity;
 import com.visionsoft.plms.entity.enums.ItemStatus;
 import com.visionsoft.plms.entity.enums.ItemType;
 import jakarta.persistence.*;
-import lombok.Data;
+import lombok.Getter;
+import lombok.Setter;
 import org.hibernate.annotations.CreationTimestamp;
 
 import java.time.LocalDateTime;
 
-@Data
+@Getter
+@Setter
 @Entity
 @Table(name = "library_items")
-@Inheritance(strategy = InheritanceType.JOINED) // Alt sınıflar kendi tablolarına sahip olur
+@Inheritance(strategy = InheritanceType.JOINED)
 public abstract class LibraryItem {
 
     @Id
@@ -29,16 +31,16 @@ public abstract class LibraryItem {
     @Column(length = 2000)
     private String description;
 
-    private String imageUrl; // Kapak resmi linki
+    private String imageUrl;
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
-    private ItemType type;
+    protected ItemType type;
 
     @Enumerated(EnumType.STRING)
-    private ItemStatus status = ItemStatus.WISHLIST; // Varsayılan: İstek Listesi
+    private ItemStatus status = ItemStatus.WISHLIST;
 
-    private Integer rating; // 1-10 arası puan
+    private Integer rating;
 
     @Column(name = "is_favorite")
     private boolean favorite = false;

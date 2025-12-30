@@ -22,6 +22,6 @@ public class Music extends LibraryItem {
     private Integer releaseYear;
 
     public Music() {
-        this.setType(ItemType.MUSIC);
+    this.type = ItemType.MUSIC;
     }
 }
