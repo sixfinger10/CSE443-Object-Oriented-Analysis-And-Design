@@ -21,7 +21,10 @@ public class Music extends LibraryItem {
     private Integer trackCount;
     private Integer releaseYear;
 
+    // Last.fm Unique ID (Varsa)
+    private String mbid;
+
     public Music() {
-    this.type = ItemType.MUSIC;
+        this.type = ItemType.MUSIC;
     }
 }
