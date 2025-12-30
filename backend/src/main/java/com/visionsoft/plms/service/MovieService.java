@@ -45,32 +45,27 @@ public class MovieService {
 
         // DURUM 1: Kullanıcı IMDb ID girmiş (Direkt nokta atışı)
         if (request.getImdbId() != null && !request.getImdbId().isEmpty()) {
-            return saveMovieByImdbId(request.getImdbId(), userId);
+            // --- GÜNCELLENDİ: Favorite bilgisini parametre olarak geçiyoruz ---
+            return saveMovieByImdbId(request.getImdbId(), userId, request.getFavorite());
         }
 
         // DURUM 2: Kullanıcı İsim Girmiş (Arama Yapacağız)
         else {
             User currentUser = getUserById(userId);
 
-            // --- A. Veritabanı Kontrolü (GÜNCELLENDİ) ---
-            // Artık hem yönetmenli hem yönetmensiz durumu kontrol ediyoruz.
+            // A. Veritabanı Kontrolü
             List<Movie> existing;
-
             if (request.getDirector() != null && !request.getDirector().isEmpty()) {
-                // Yönetmen girildiyse sıkı kontrol (İsim + Yönetmen)
                 existing = movieRepository.findByUserIdAndTitleAndDirector(
                         userId, request.getTitle(), request.getDirector()
                 );
             } else {
-                // Yönetmen girilmediyse (Manuel veya eksik giriş) sadece isme bak
                 existing = movieRepository.findByUserIdAndTitle(userId, request.getTitle());
             }
 
-            // Eğer veritabanında varsa direkt onu döndür, işlem yapma
             if (!existing.isEmpty()) {
                 return existing.get(0);
             }
-            // ----------------------------------------------------
 
             // B. OMDb API'de Ara
             Movie movieToSave = new Movie();
@@ -95,6 +90,9 @@ public class MovieService {
             movieToSave.setType(ItemType.MOVIE);
             movieToSave.setStatus(ItemStatus.WISHLIST);
 
+            // --- YENİ: FAVORİ DURUMUNU KAYDET ---
+            movieToSave.setFavorite(request.getFavorite() != null ? request.getFavorite() : false);
+
             if (!foundInApi || movieToSave.getTitle() == null) movieToSave.setTitle(request.getTitle());
             if (!foundInApi || movieToSave.getDirector() == null) movieToSave.setDirector(request.getDirector());
 
@@ -104,15 +102,12 @@ public class MovieService {
             if (movieToSave.getReleaseYear() == null) movieToSave.setReleaseYear(request.getReleaseYear());
             if (movieToSave.getGenre() == null) movieToSave.setGenre(request.getGenre());
 
-            // --- GÜVENLİK KİLİDİ (IMDb ID varsa son kontrol) ---
+            // --- GÜVENLİK KİLİDİ ---
             if (movieToSave.getImdbId() != null) {
                 Optional<Movie> duplicateCheck = movieRepository.findByImdbIdAndUser(movieToSave.getImdbId(), currentUser);
                 if (duplicateCheck.isPresent()) return duplicateCheck.get();
             }
 
-            // --- YENİ GÜVENLİK KİLİDİ (Manuel eklenenler için son kontrol) ---
-            // Eğer IMDb ID yoksa (manuel ise), son bir kez isme bak.
-            // Çünkü yukarıdaki kontrol "request" ismine baktı, ama belki kod akışında isim değişti.
             if (movieToSave.getImdbId() == null) {
                 List<Movie> manualDuplicateCheck = movieRepository.findByUserIdAndTitle(userId, movieToSave.getTitle());
                 if (!manualDuplicateCheck.isEmpty()) return manualDuplicateCheck.get(0);
@@ -122,9 +117,11 @@ public class MovieService {
         }
     }
 
-    // --- DİĞER METOTLAR AYNI KALDI ---
-    public Movie saveMovieByImdbId(String imdbId, Long userId) {
+    // --- SADECE IMDB ID İLE KAYDETME ---
+    // --- GÜNCELLENDİ: Boolean isFavorite parametresi eklendi ---
+    public Movie saveMovieByImdbId(String imdbId, Long userId, Boolean isFavorite) {
         User currentUser = getUserById(userId);
+
         Optional<Movie> existing = movieRepository.findByImdbIdAndUser(imdbId, currentUser);
         if (existing.isPresent()) return existing.get();
 
@@ -133,12 +130,19 @@ public class MovieService {
         movie.setType(ItemType.MOVIE);
         movie.setStatus(ItemStatus.WISHLIST);
 
+        // --- YENİ: Favori Set Etme ---
+        movie.setFavorite(isFavorite != null ? isFavorite : false);
+
+        // Detayları çek
         boolean success = fetchAndMapDetails(imdbId, movie);
-        if (!success) throw new RuntimeException("OMDb API'de bu ID ile film bulunamadı: " + imdbId);
+        if (!success) {
+            throw new RuntimeException("OMDb API'de bu ID ile film bulunamadı: " + imdbId);
+        }
 
         return movieRepository.save(movie);
     }
 
+    // --- YARDIMCI METODLAR AYNEN KALIYOR ---
     private JsonNode findBestMatch(JsonNode searchResults) {
         JsonNode bestItem = searchResults.get(0);
         Iterator<JsonNode> elements = searchResults.elements();
@@ -189,6 +193,10 @@ public class MovieService {
     }
 
     private Integer parseInteger(String val) {
-        try { return Integer.parseInt(val.trim()); } catch (NumberFormatException e) { return null; }
+        try {
+            return Integer.parseInt(val.trim());
+        } catch (NumberFormatException e) {
+            return null;
+        }
     }
 }

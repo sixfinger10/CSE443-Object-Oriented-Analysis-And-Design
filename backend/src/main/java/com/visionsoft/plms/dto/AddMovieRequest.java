@@ -8,6 +8,9 @@ public class AddMovieRequest {
     private String title;
     private String description;
 
+    // --- YENİ EKLENEN ---
+    private Boolean favorite; // True gelirse favori olarak ekle
+
     // Movie (Özel)
     private String imdbId;
     private String director;
