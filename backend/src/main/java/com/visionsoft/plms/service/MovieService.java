@@ -52,38 +52,40 @@ public class MovieService {
         else {
             User currentUser = getUserById(userId);
 
-            // A. Veritabanı Kontrolü (Manuel giriş için)
-            // Eğer başlık ve yönetmen tutuyorsa tekrar ekleme
-            if (request.getDirector() != null) {
-                List<Movie> existing = movieRepository.findByUserIdAndTitleAndDirector(
+            // --- A. Veritabanı Kontrolü (GÜNCELLENDİ) ---
+            // Artık hem yönetmenli hem yönetmensiz durumu kontrol ediyoruz.
+            List<Movie> existing;
+
+            if (request.getDirector() != null && !request.getDirector().isEmpty()) {
+                // Yönetmen girildiyse sıkı kontrol (İsim + Yönetmen)
+                existing = movieRepository.findByUserIdAndTitleAndDirector(
                         userId, request.getTitle(), request.getDirector()
                 );
-                if (!existing.isEmpty()) return existing.get(0);
+            } else {
+                // Yönetmen girilmediyse (Manuel veya eksik giriş) sadece isme bak
+                existing = movieRepository.findByUserIdAndTitle(userId, request.getTitle());
             }
+
+            // Eğer veritabanında varsa direkt onu döndür, işlem yapma
+            if (!existing.isEmpty()) {
+                return existing.get(0);
+            }
+            // ----------------------------------------------------
 
             // B. OMDb API'de Ara
             Movie movieToSave = new Movie();
             boolean foundInApi = false;
 
             try {
-                // Film araması yapıyoruz (type=movie ekledik ki diziler karışmasın)
                 String searchUrl = OMDB_URL + "&s=" + request.getTitle().replace(" ", "+") + "&type=movie";
                 String jsonResponse = restTemplate.getForObject(searchUrl, String.class);
                 JsonNode root = objectMapper.readTree(jsonResponse);
 
                 if (root.has("Search") && root.path("Search").size() > 0) {
-
-                    // 1. ADIM: Listeden En İyi Filmi Seç (Posteri olanı tercih et)
                     JsonNode bestMatch = findBestMatch(root.path("Search"));
                     String imdbID = bestMatch.path("imdbID").asText();
-
-                    // 2. ADIM: Seçilen ID ile Detayları Çek (Çünkü Search listesi detay vermez)
-                    // saveMovieByImdbId metodunu çağırmıyoruz çünkü o save ediyor, biz burada merge yapıcaz.
-                    // O yüzden detay çekme işini buraya inline yapıyorum veya helper kullanıyorum.
-
                     foundInApi = fetchAndMapDetails(imdbID, movieToSave);
                 }
-
             } catch (Exception e) {
                 System.out.println("OMDb API Hatası (Manuel devam): " + e.getMessage());
             }
@@ -91,35 +93,38 @@ public class MovieService {
             // C. Eksikleri Tamamla ve Kaydet
             movieToSave.setUser(currentUser);
             movieToSave.setType(ItemType.MOVIE);
-            movieToSave.setStatus(ItemStatus.WISHLIST); // Varsayılan
+            movieToSave.setStatus(ItemStatus.WISHLIST);
 
-            // API bulamadıysa kullanıcının girdiklerini al
             if (!foundInApi || movieToSave.getTitle() == null) movieToSave.setTitle(request.getTitle());
             if (!foundInApi || movieToSave.getDirector() == null) movieToSave.setDirector(request.getDirector());
 
-            // Manuel alanlar
             if (request.getDescription() != null) movieToSave.setDescription(request.getDescription());
             else if (movieToSave.getDescription() == null) movieToSave.setDescription("Manuel eklendi.");
 
-            // Manuel override (Kullanıcı API'den geleni beğenmeyip kendi girdiyse ezsin mi? Genelde hayır, boşsa doldururuz)
             if (movieToSave.getReleaseYear() == null) movieToSave.setReleaseYear(request.getReleaseYear());
             if (movieToSave.getGenre() == null) movieToSave.setGenre(request.getGenre());
 
-            // --- GÜVENLİK KİLİDİ (SON KONTROL) ---
+            // --- GÜVENLİK KİLİDİ (IMDb ID varsa son kontrol) ---
             if (movieToSave.getImdbId() != null) {
                 Optional<Movie> duplicateCheck = movieRepository.findByImdbIdAndUser(movieToSave.getImdbId(), currentUser);
                 if (duplicateCheck.isPresent()) return duplicateCheck.get();
+            }
+
+            // --- YENİ GÜVENLİK KİLİDİ (Manuel eklenenler için son kontrol) ---
+            // Eğer IMDb ID yoksa (manuel ise), son bir kez isme bak.
+            // Çünkü yukarıdaki kontrol "request" ismine baktı, ama belki kod akışında isim değişti.
+            if (movieToSave.getImdbId() == null) {
+                List<Movie> manualDuplicateCheck = movieRepository.findByUserIdAndTitle(userId, movieToSave.getTitle());
+                if (!manualDuplicateCheck.isEmpty()) return manualDuplicateCheck.get(0);
             }
 
             return movieRepository.save(movieToSave);
         }
     }
 
-    // --- SADECE IMDB ID İLE KAYDETME ---
+    // --- DİĞER METOTLAR AYNI KALDI ---
     public Movie saveMovieByImdbId(String imdbId, Long userId) {
         User currentUser = getUserById(userId);
-
-        // Zaten var mı?
         Optional<Movie> existing = movieRepository.findByImdbIdAndUser(imdbId, currentUser);
         if (existing.isPresent()) return existing.get();
 
@@ -128,91 +133,62 @@ public class MovieService {
         movie.setType(ItemType.MOVIE);
         movie.setStatus(ItemStatus.WISHLIST);
 
-        // Detayları çek
         boolean success = fetchAndMapDetails(imdbId, movie);
-
-        if (!success) {
-            throw new RuntimeException("OMDb API'de bu ID ile film bulunamadı: " + imdbId);
-        }
+        if (!success) throw new RuntimeException("OMDb API'de bu ID ile film bulunamadı: " + imdbId);
 
         return movieRepository.save(movie);
     }
 
-    // --- YARDIMCI METOD: EN İYİ EŞLEŞMEYİ BULMA ---
     private JsonNode findBestMatch(JsonNode searchResults) {
-        JsonNode bestItem = searchResults.get(0); // Varsayılan ilk
-
-        // Basit Mantık: Posteri "N/A" olmayan ilk kaydı bulsak yeterli.
-        // OMDb sıralaması genelde popülerliğe göredir zaten.
+        JsonNode bestItem = searchResults.get(0);
         Iterator<JsonNode> elements = searchResults.elements();
         while (elements.hasNext()) {
             JsonNode item = elements.next();
             if (item.has("Poster") && !item.path("Poster").asText().equals("N/A")) {
                 bestItem = item;
-                break; // Posteri olanı bulduk, yapış.
+                break;
             }
         }
         return bestItem;
     }
 
-    // --- YARDIMCI METOD: ID'DEN DETAY ÇEK VE MAPLE ---
     private boolean fetchAndMapDetails(String imdbId, Movie movie) {
         try {
-            String detailUrl = OMDB_URL + "&i=" + imdbId + "&plot=full"; // plot=full uzun özet verir
+            String detailUrl = OMDB_URL + "&i=" + imdbId + "&plot=full";
             String jsonResponse = restTemplate.getForObject(detailUrl, String.class);
             JsonNode root = objectMapper.readTree(jsonResponse);
 
-            if ("False".equalsIgnoreCase(root.path("Response").asText())) {
-                return false;
-            }
+            if ("False".equalsIgnoreCase(root.path("Response").asText())) return false;
 
-            // Mapping
             movie.setImdbId(imdbId);
             movie.setTitle(root.path("Title").asText());
             movie.setDirector(root.path("Director").asText());
             movie.setGenre(root.path("Genre").asText());
             movie.setCastMembers(root.path("Actors").asText());
 
-            // Yıl "2012"
             String yearStr = root.path("Year").asText().replaceAll("[^0-9]", "");
             if (!yearStr.isEmpty()) movie.setReleaseYear(Integer.parseInt(yearStr.substring(0, 4)));
 
-            // Süre "142 min" -> 142
             String runtime = root.path("Runtime").asText();
-            if (runtime.contains("min")) {
-                movie.setDurationMinutes(parseInteger(runtime.replace(" min", "")));
-            }
+            if (runtime.contains("min")) movie.setDurationMinutes(parseInteger(runtime.replace(" min", "")));
 
-            // Puan "8.5"
             String rating = root.path("imdbRating").asText();
-            if (!"N/A".equals(rating)) {
-                movie.setImdbScore(Double.parseDouble(rating));
-            }
+            if (!"N/A".equals(rating)) movie.setImdbScore(Double.parseDouble(rating));
 
-            // Açıklama
             String plot = root.path("Plot").asText();
             movie.setDescription("N/A".equals(plot) ? "Açıklama yok." : plot);
 
-            // Resim
             String poster = root.path("Poster").asText();
-            if (!"N/A".equals(poster)) {
-                movie.setImageUrl(poster);
-            }
+            if (!"N/A".equals(poster)) movie.setImageUrl(poster);
 
             return true;
-
         } catch (Exception e) {
             e.printStackTrace();
             return false;
         }
     }
 
-    // Sayı dönüşümleri için güvenli metod
     private Integer parseInteger(String val) {
-        try {
-            return Integer.parseInt(val.trim());
-        } catch (NumberFormatException e) {
-            return null;
-        }
+        try { return Integer.parseInt(val.trim()); } catch (NumberFormatException e) { return null; }
     }
 }
