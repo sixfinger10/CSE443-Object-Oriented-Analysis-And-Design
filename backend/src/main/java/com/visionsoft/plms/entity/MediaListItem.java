@@ -22,6 +22,7 @@ public class MediaListItem {
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "library_item_id", nullable = false)
+    @com.fasterxml.jackson.annotation.JsonIgnore
     private LibraryItem libraryItem;
 
     private Integer itemOrder; // Listede kaçıncı sırada?

@@ -1,10 +1,8 @@
 package com.visionsoft.plms.controller;
 
-import com.visionsoft.plms.dto.AddBookRequest;
 import com.visionsoft.plms.entity.Book;
 import com.visionsoft.plms.repository.BookRepository;
 import com.visionsoft.plms.service.BookService;
-import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -13,31 +11,33 @@ import java.util.List;
 @RequestMapping("/api/books")
 public class BookController {
 
-    private final BookService bookService;
     private final BookRepository bookRepository;
+    private final BookService bookService; // Yeni ekibimiz
 
-    // Constructor Injection
-    public BookController(BookService bookService, BookRepository bookRepository) {
-        this.bookService = bookService;
+    // Constructor Injection (Ekibi içeri alıyoruz)
+    public BookController(BookRepository bookRepository, BookService bookService) {
         this.bookRepository = bookRepository;
+        this.bookService = bookService;
     }
 
-    // 1. KİTAPLARI LİSTELE (GET)
-    // Bunu silmedik, çünkü listeyi görmek istersin.
     @GetMapping
     public List<Book> getAllBooks() {
         return bookRepository.findAll();
     }
 
-    // 2. KİTAP EKLE (POST) - TEK VE AKILLI GİRİŞ KAPISI
-    // Artık hem ISBN'li hem de Manuel eklemeyi bu tek metot hallediyor.
-    // Frontend'den gelen JSON'a (AddBookRequest) bakıyor, Service'e yolluyor.
+    // Manuel ekleme (Eskisi gibi)
     @PostMapping
-    public ResponseEntity<Book> createBook(@RequestBody AddBookRequest request) {
-        Book savedBook = bookService.addBook(request);
-        return ResponseEntity.ok(savedBook);
+    public Book createBook(@RequestBody Book book) {
+        return bookRepository.save(book);
     }
 
-    // NOT: Eski "/fetch/{isbn}" metodunu sildik çünkü artık yukarıdaki
-    // createBook metodu, JSON içinde ISBN gelirse o işi zaten yapıyor.
+    // --- YENİ ÖZELLİK: ISBN ile Getir ---
+    @PostMapping("/fetch/{isbn}")
+    public Book fetchAndSaveGoogleBook(@PathVariable String isbn) {
+        // TODO: İleride giriş yapmış kullanıcının ID'sini (Security Context) alacağız.
+        // Şimdilik test için veritabanındaki 1 ID'li kullanıcıyı kullanıyoruz.
+        Long dummyUserId = 1L;
+
+        return bookService.saveBookByIsbn(isbn,dummyUserId);
+    }
 }
