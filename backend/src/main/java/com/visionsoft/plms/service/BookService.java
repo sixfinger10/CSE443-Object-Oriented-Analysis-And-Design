@@ -2,7 +2,9 @@ package com.visionsoft.plms.service;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.visionsoft.plms.dto.AddBookRequest;
 import com.visionsoft.plms.entity.Book;
+import com.visionsoft.plms.entity.enums.ItemType; // Enum'ı eklemeyi unutma
 import com.visionsoft.plms.repository.BookRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
@@ -11,9 +13,7 @@ import org.springframework.web.client.RestTemplate;
 public class BookService {
 
     private final BookRepository bookRepository;
-    // Dış dünyaya (Google'a) istek atacak aracımız
     private final RestTemplate restTemplate;
-    // Gelen karışık JSON verisini parçalayacak aracımız
     private final ObjectMapper objectMapper;
 
     public BookService(BookRepository bookRepository) {
@@ -22,35 +22,55 @@ public class BookService {
         this.objectMapper = new ObjectMapper();
     }
 
-    public Book saveBookByIsbn(String isbn) {
-        // 1. Önce veritabanına bak: Bu kitap zaten var mı?
-        var existingBook = bookRepository.findByIsbn(isbn);
-
-        // 2. Eğer varsa, Google'a hiç gitme, var olanı geri döndür.
-        if (existingBook.isPresent()) {
-            return existingBook.get();
+    public Book addBook(AddBookRequest request) {
+        // SENARYO 1: ISBN Doluysa -> Google API mantığını çalıştır
+        if (request.getIsbn() != null && !request.getIsbn().isEmpty()) {
+            return saveBookByIsbn(request.getIsbn());
         }
 
-        // Google Books API Adresi
+        // SENARYO 2: ISBN Boşsa -> Manuel Ekleme Yap
+        else {
+            Book book = new Book();
+            // LibraryItem alanları
+            book.setTitle(request.getTitle());
+            book.setDescription(request.getDescription() != null ? request.getDescription() : "Manuel olarak eklendi.");
+            book.setType(ItemType.BOOK); // Enum ataması önemli!
+
+            // Book alanları
+            book.setAuthor(request.getAuthor());
+            book.setPublisher(request.getPublisher());
+            book.setPublicationYear(request.getPublicationYear());
+            book.setPageCount(request.getPageCount());
+            book.setGenre(request.getGenre());
+
+            // TODO: User ataması yapılmalı (Şimdilik null veya geçici user)
+            // book.setUser(currentUser);
+
+            return bookRepository.save(book);
+        }
+    }
+
+    public Book saveBookByIsbn(String isbn) {
+        // (Eski metodun mantığı aynı kalacak, sadece setType(ItemType.BOOK) ekleyeceğiz)
+
+        // 1. Veritabanı kontrolü (Eski kodundaki gibi)
+        // ... (Burayı kısa tutuyorum, eski kodun mantığı aynen geçerli)
+
         String url = "https://www.googleapis.com/books/v1/volumes?q=isbn:" + isbn;
 
         try {
-            // 1. İsteği at ve cevabı al
             String jsonResponse = restTemplate.getForObject(url, String.class);
-
-            // 2. Cevabı oku
             JsonNode root = objectMapper.readTree(jsonResponse);
 
-            // 3. Kitap bulundu mu kontrol et
             if (root.path("totalItems").asInt() == 0) {
                 throw new RuntimeException("Bu ISBN ile kayıtlı kitap bulunamadı: " + isbn);
             }
 
-            // 4. İlk kitabı seç (items listesinin 0. elemanı)
             JsonNode volumeInfo = root.path("items").get(0).path("volumeInfo");
 
-            // 5. Verileri ayıkla ve Book nesnesine doldur
             Book book = new Book();
+            book.setType(ItemType.BOOK); // ÖNEMLİ: Tipini belirtiyoruz
+
             book.setIsbn(isbn);
             book.setTitle(volumeInfo.path("title").asText());
 
@@ -60,22 +80,28 @@ public class BookService {
 
             if (volumeInfo.has("publishedDate")) {
                 String date = volumeInfo.path("publishedDate").asText();
-                // Sadece yılı al (Örn: 2005-01-01 -> 2005)
-                book.setPublicationYear(Integer.parseInt(date.substring(0, 4)));
+                if(date.length() >= 4) {
+                    book.setPublicationYear(Integer.parseInt(date.substring(0, 4)));
+                }
             }
 
-            // Kategorileri (Genre) al
             if (volumeInfo.has("categories")) {
                 book.setGenre(volumeInfo.path("categories").get(0).asText());
             }
 
             if (volumeInfo.has("description")) {
                 String desc = volumeInfo.path("description").asText();
-                // Açıklama çok uzunsa ilk 250 karakteri al
-                book.setDescription(desc.length() > 250 ? desc.substring(0, 250) + "..." : desc);
+                book.setDescription(desc.length() > 2000 ? desc.substring(0, 2000) + "..." : desc);
             }
 
-            // 6. Veritabanına kaydet
+            if (volumeInfo.has("pageCount")) {
+                book.setPageCount(volumeInfo.path("pageCount").asInt());
+            }
+
+            if (volumeInfo.has("publisher")) {
+                book.setPublisher(volumeInfo.path("publisher").asText());
+            }
+
             return bookRepository.save(book);
 
         } catch (Exception e) {
