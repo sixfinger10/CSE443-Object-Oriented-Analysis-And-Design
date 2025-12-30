@@ -1,6 +1,7 @@
 package com.visionsoft.plms.controller;
 
 import com.visionsoft.plms.dto.AddBookRequest;
+import com.visionsoft.plms.dto.UpdateBookRequest;
 import com.visionsoft.plms.entity.Book;
 import com.visionsoft.plms.repository.BookRepository;
 import com.visionsoft.plms.service.BookService;
@@ -49,5 +50,17 @@ public class BookController {
         bookService.deleteBook(id, userId);
 
         return ResponseEntity.ok("Kitap başarıyla silindi. ID: " + id);
+    }
+
+    // --- GÜNCELLEME ENDPOINT'İ ---
+    // PUT /api/books/{id}
+    @PutMapping("/{id}")
+    public ResponseEntity<Book> updateBook(
+            @PathVariable Long id,
+            @RequestBody UpdateBookRequest request,
+            @RequestHeader("X-User-Id") Long userId) {
+
+        Book updatedBook = bookService.updateBook(id, request, userId);
+        return ResponseEntity.ok(updatedBook);
     }
 }
