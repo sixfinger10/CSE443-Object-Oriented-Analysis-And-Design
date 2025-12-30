@@ -3,6 +3,7 @@ package com.visionsoft.plms.service;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.visionsoft.plms.dto.AddMovieRequest;
+import com.visionsoft.plms.dto.UpdateMovieRequest;
 import com.visionsoft.plms.entity.Movie;
 import com.visionsoft.plms.entity.User;
 import com.visionsoft.plms.entity.enums.ItemStatus;
@@ -198,5 +199,55 @@ public class MovieService {
         } catch (NumberFormatException e) {
             return null;
         }
+    }
+
+    // --- 2. SİLME METODU (DELETE) ---
+    public void deleteMovie(Long id, Long userId) {
+        // Filmi bul
+        Movie movie = movieRepository.findById(id)
+                .orElseThrow(() -> new org.springframework.web.server.ResponseStatusException(
+                        org.springframework.http.HttpStatus.NOT_FOUND, "Film bulunamadı (ID: " + id + ")"));
+
+        // Yetki Kontrolü
+        if (!movie.getUser().getId().equals(userId)) {
+            throw new org.springframework.web.server.ResponseStatusException(
+                    org.springframework.http.HttpStatus.FORBIDDEN, "Bu filmi silme yetkiniz yok!");
+        }
+
+        // Sil
+        movieRepository.delete(movie);
+    }
+
+    // --- 3. GÜNCELLEME METODU (UPDATE) ---
+    public Movie updateMovie(Long id, UpdateMovieRequest request, Long userId) {
+        // Filmi bul
+        Movie movie = movieRepository.findById(id)
+                .orElseThrow(() -> new org.springframework.web.server.ResponseStatusException(
+                        org.springframework.http.HttpStatus.NOT_FOUND, "Film bulunamadı (ID: " + id + ")"));
+
+        // Yetki Kontrolü
+        if (!movie.getUser().getId().equals(userId)) {
+            throw new org.springframework.web.server.ResponseStatusException(
+                    org.springframework.http.HttpStatus.FORBIDDEN, "Bu filmi güncelleme yetkiniz yok!");
+        }
+
+        // --- Ortak Alanları Güncelle (Varsa) ---
+        if (request.getTitle() != null) movie.setTitle(request.getTitle());
+        if (request.getDescription() != null) movie.setDescription(request.getDescription());
+        if (request.getFavorite() != null) movie.setFavorite(request.getFavorite());
+        if (request.getStatus() != null) movie.setStatus(request.getStatus());
+        if (request.getImageUrl() != null) movie.setImageUrl(request.getImageUrl());
+
+        // Rating dönüşümü (Double -> Integer)
+        if (request.getRating() != null) movie.setRating(request.getRating().intValue());
+
+        // --- Filme Özel Alanları Güncelle ---
+        if (request.getDirector() != null) movie.setDirector(request.getDirector());
+        if (request.getDurationMinutes() != null) movie.setDurationMinutes(request.getDurationMinutes());
+        if (request.getReleaseYear() != null) movie.setReleaseYear(request.getReleaseYear());
+        if (request.getGenre() != null) movie.setGenre(request.getGenre());
+        if (request.getCastMembers() != null) movie.setCastMembers(request.getCastMembers());
+
+        return movieRepository.save(movie);
     }
 }

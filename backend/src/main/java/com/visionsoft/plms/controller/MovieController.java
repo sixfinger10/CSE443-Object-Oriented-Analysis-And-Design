@@ -35,4 +35,25 @@ public class MovieController {
         Movie savedMovie = movieService.addMovie(request, userId);
         return ResponseEntity.ok(savedMovie);
     }
+
+    // --- SİLME ---
+    @DeleteMapping("/{id}")
+    public ResponseEntity<String> deleteMovie(
+            @PathVariable Long id,
+            @RequestHeader("X-User-Id") Long userId) {
+
+        movieService.deleteMovie(id, userId);
+        return ResponseEntity.ok("Film başarıyla silindi. ID: " + id);
+    }
+
+    // --- GÜNCELLEME ---
+    @PutMapping("/{id}")
+    public ResponseEntity<Movie> updateMovie(
+            @PathVariable Long id,
+            @RequestBody com.visionsoft.plms.dto.UpdateMovieRequest request,
+            @RequestHeader("X-User-Id") Long userId) {
+
+        Movie updatedMovie = movieService.updateMovie(id, request, userId);
+        return ResponseEntity.ok(updatedMovie);
+    }
 }
