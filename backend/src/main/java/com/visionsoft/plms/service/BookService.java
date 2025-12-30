@@ -2,8 +2,11 @@ package com.visionsoft.plms.service;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.visionsoft.plms.dto.AddBookRequest;
 import com.visionsoft.plms.entity.Book;
 import com.visionsoft.plms.entity.User;
+import com.visionsoft.plms.entity.enums.ItemType;
+import com.visionsoft.plms.entity.enums.ItemStatus;
 import com.visionsoft.plms.repository.BookRepository;
 import com.visionsoft.plms.repository.UserRepository;
 import org.springframework.stereotype.Service;
@@ -13,7 +16,7 @@ import org.springframework.web.client.RestTemplate;
 public class BookService {
 
     private final BookRepository bookRepository;
-    private final UserRepository userRepository; // User'ı bulmak için lazım
+    private final UserRepository userRepository;
     private final RestTemplate restTemplate;
     private final ObjectMapper objectMapper;
 
@@ -24,18 +27,48 @@ public class BookService {
         this.objectMapper = new ObjectMapper();
     }
 
-    // Metot imzasını değiştirdik: Artık userId istiyoruz
+    // Yardımcı Metot: ID'den kullanıcıyı bul
+    private User getUserById(Long userId) {
+        return userRepository.findById(userId)
+                .orElseThrow(() -> new RuntimeException("HATA: ID'si " + userId + " olan kullanıcı bulunamadı!"));
+    }
+
+    // --- ANA METOT (Controller Burayı Çağırır) ---
+    public Book addBook(AddBookRequest request, Long userId) {
+        // ISBN varsa Google API akışı
+        if (request.getIsbn() != null && !request.getIsbn().isEmpty()) {
+            return saveBookByIsbn(request.getIsbn(), userId);
+        }
+        // ISBN yoksa Manuel akış
+        else {
+            Book book = new Book();
+            book.setUser(getUserById(userId)); // Dinamik kullanıcı
+            book.setType(ItemType.BOOK);
+            book.setStatus(ItemStatus.WISHLIST);
+
+            book.setTitle(request.getTitle());
+            book.setDescription(request.getDescription() != null ? request.getDescription() : "Manuel eklendi.");
+            book.setAuthor(request.getAuthor());
+            book.setPublisher(request.getPublisher());
+            book.setPublicationYear(request.getPublicationYear());
+            book.setPageCount(request.getPageCount());
+            book.setGenre(request.getGenre());
+
+            return bookRepository.save(book);
+        }
+    }
+
+    // --- GOOGLE API METODU ---
     public Book saveBookByIsbn(String isbn, Long userId) {
 
-        // 0. Kullanıcıyı bul (Yoksa hata fırlat)
-        User user = userRepository.findById(userId)
-                .orElseThrow(() -> new RuntimeException("Kullanıcı bulunamadı ID: " + userId));
+        User currentUser = getUserById(userId);
 
-        // 1. Önce veritabanına bak: Bu kullanıcı bu kitabı zaten eklemiş mi?
-        // NOT: Global bir kontrol yerine, o kullanıcının kütüphanesinde var mı diye bakmak daha doğru olabilir.
-        // Ama şimdilik ISBN kontrolü kalsın.
-        var existingBook = bookRepository.findByIsbn(isbn);
+        // 1. KONTROL: Sadece BU kullanıcının kütüphanesine bakıyoruz.
+        // Başkasında olup olmaması bizi ilgilendirmiyor.
+        var existingBook = bookRepository.findByIsbnAndUser(isbn, currentUser);
+
         if (existingBook.isPresent()) {
+            // Zaten varsa aynısını dön (Duplicate yok)
             return existingBook.get();
         }
 
@@ -46,36 +79,36 @@ public class BookService {
             JsonNode root = objectMapper.readTree(jsonResponse);
 
             if (root.path("totalItems").asInt() == 0) {
-                throw new RuntimeException("Bu ISBN ile kayıtlı kitap bulunamadı: " + isbn);
+                throw new RuntimeException("Google'da bu kitap bulunamadı: " + isbn);
             }
 
             JsonNode volumeInfo = root.path("items").get(0).path("volumeInfo");
 
             Book book = new Book();
-            book.setUser(user); // <--- KRİTİK DÜZELTME: Kitabın sahibini atadık
+
+            // Kullanıcıyı Ata
+            book.setUser(currentUser);
+
+            book.setType(ItemType.BOOK);
+            book.setStatus(ItemStatus.WISHLIST);
             book.setIsbn(isbn);
             book.setTitle(volumeInfo.path("title").asText());
 
-            if (volumeInfo.has("authors")) {
-                book.setAuthor(volumeInfo.path("authors").get(0).asText());
-            }
-
+            if (volumeInfo.has("authors")) book.setAuthor(volumeInfo.path("authors").get(0).asText());
             if (volumeInfo.has("publishedDate")) {
                 String date = volumeInfo.path("publishedDate").asText();
-                // Google bazen sadece "2005" döner, bazen "2005-10-10". Hata almamak için:
-                if (date.length() >= 4) {
-                    book.setPublicationYear(Integer.parseInt(date.substring(0, 4)));
-                }
+                if(date.length() >= 4) book.setPublicationYear(Integer.parseInt(date.substring(0, 4)));
             }
-
-            // Sayfa Sayısı (Entity'de vardı, ekleyelim)
-            if (volumeInfo.has("pageCount")) {
-                book.setPageCount(volumeInfo.path("pageCount").asInt());
+            if (volumeInfo.has("categories")) book.setGenre(volumeInfo.path("categories").get(0).asText());
+            if (volumeInfo.has("description")) {
+                String desc = volumeInfo.path("description").asText();
+                book.setDescription(desc.length() > 2000 ? desc.substring(0, 2000) + "..." : desc);
             }
+            if (volumeInfo.has("pageCount")) book.setPageCount(volumeInfo.path("pageCount").asInt());
+            if (volumeInfo.has("publisher")) book.setPublisher(volumeInfo.path("publisher").asText());
 
-            // Kapak Resmi (Entity'de vardı, ekleyelim)
+            // Resim Alma
             if (volumeInfo.has("imageLinks")) {
-                // thumbnail veya smallThumbnail alalım
                 JsonNode images = volumeInfo.path("imageLinks");
                 if (images.has("thumbnail")) {
                     book.setImageUrl(images.path("thumbnail").asText());
@@ -84,20 +117,11 @@ public class BookService {
                 }
             }
 
-            if (volumeInfo.has("categories")) {
-                book.setGenre(volumeInfo.path("categories").get(0).asText());
-            }
-
-            if (volumeInfo.has("description")) {
-                String desc = volumeInfo.path("description").asText();
-                book.setDescription(desc.length() > 2000 ? desc.substring(0, 2000) : desc);
-            }
-
             return bookRepository.save(book);
 
         } catch (Exception e) {
-            e.printStackTrace(); // Loglarda hatayı görmek için
-            throw new RuntimeException("Google API hatası: " + e.getMessage());
+            e.printStackTrace();
+            throw new RuntimeException("Hata: " + e.getMessage());
         }
     }
 }

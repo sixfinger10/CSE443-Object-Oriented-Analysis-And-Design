@@ -1,14 +1,14 @@
 package com.visionsoft.plms.dto;
 
-import lombok.Data;
+import lombok.Data; // Lombok kütüphanesini çağırıyoruz
 
-@Data
+@Data // Bu sihirli kelime, arka planda tüm getter/setter'ları yaratır
 public class AddBookRequest {
-    // LibraryItem (Ortak) Alanları
+    // LibraryItem (Ortak)
     private String title;
     private String description;
 
-    // Book (Özel) Alanları
+    // Book (Özel)
     private String isbn;
     private String author;
     private String publisher;
