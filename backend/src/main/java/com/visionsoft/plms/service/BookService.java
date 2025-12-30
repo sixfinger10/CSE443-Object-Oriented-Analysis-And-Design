@@ -3,6 +3,7 @@ package com.visionsoft.plms.service;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.visionsoft.plms.dto.AddBookRequest;
+import com.visionsoft.plms.dto.UpdateBookRequest;
 import com.visionsoft.plms.entity.Book;
 import com.visionsoft.plms.entity.User;
 import com.visionsoft.plms.entity.enums.ItemType;
@@ -289,5 +290,36 @@ public class BookService {
 
         // 3. Silme İşlemi
         bookRepository.delete(book);
+    }
+
+    // --- GÜNCELLEME METODU ---
+    public Book updateBook(Long bookId, UpdateBookRequest request, Long userId) {
+        // 1. Kitabı bul
+        Book book = bookRepository.findById(bookId)
+                .orElseThrow(() -> new RuntimeException("Kitap bulunamadı (ID: " + bookId + ")"));
+
+        // 2. Yetki Kontrolü (Sadece sahibi güncelleyebilir)
+        if (!book.getUser().getId().equals(userId)) {
+            throw new RuntimeException("Bu kitabı güncelleme yetkiniz yok!");
+        }
+
+        // 3. Güncelleme (Sadece dolu gelen alanları değiştir)
+
+        // --- Ortak Alanlar ---
+        if (request.getTitle() != null) book.setTitle(request.getTitle());
+        if (request.getDescription() != null) book.setDescription(request.getDescription());
+        if (request.getFavorite() != null) book.setFavorite(request.getFavorite());
+        if (request.getStatus() != null) book.setStatus(request.getStatus());
+        // .intValue() ekleyerek Double'ı Integer'a çeviriyoruz
+        if (request.getRating() != null) book.setRating(request.getRating().intValue());
+        if (request.getImageUrl() != null) book.setImageUrl(request.getImageUrl());
+
+        // --- Kitaba Özel Alanlar ---
+        if (request.getAuthor() != null) book.setAuthor(request.getAuthor());
+        if (request.getPublisher() != null) book.setPublisher(request.getPublisher());
+        if (request.getPageCount() != null) book.setPageCount(request.getPageCount());
+
+        // 4. Kaydet ve Döndür
+        return bookRepository.save(book);
     }
 }
