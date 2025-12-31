@@ -22,9 +22,10 @@ public class MusicController {
         this.musicRepository = musicRepository;
     }
 
+    // --- GÜNCELLENDİ: Sadece giriş yapan kullanıcının müziklerini getirir ---
     @GetMapping
-    public List<Music> getAllMusic() {
-        return musicRepository.findAll();
+    public ResponseEntity<List<Music>> getAllMusic(@RequestHeader("X-User-Id") Long userId) {
+        return ResponseEntity.ok(musicRepository.findByUserId(userId));
     }
 
     @PostMapping

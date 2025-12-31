@@ -13,6 +13,9 @@ import java.util.Optional;
 @Repository
 public interface MusicRepository extends JpaRepository<Music, Long> {
 
+    // --- YENİ EKLENEN: User ID'ye göre liste ---
+    List<Music> findByUserId(Long userId);
+
     // 1. Service için: MBID ve User kontrolü (Last.fm ID varsa)
     Optional<Music> findByMbidAndUser(String mbid, User user);
 

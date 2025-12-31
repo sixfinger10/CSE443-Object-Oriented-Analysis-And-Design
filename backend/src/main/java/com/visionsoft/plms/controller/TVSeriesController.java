@@ -22,9 +22,10 @@ public class TVSeriesController {
         this.tvSeriesRepository = tvSeriesRepository;
     }
 
+    // --- GÜNCELLENDİ: Sadece giriş yapan kullanıcının dizilerini getirir ---
     @GetMapping
-    public List<TVSeries> getAllSeries() {
-        return tvSeriesRepository.findAll();
+    public ResponseEntity<List<TVSeries>> getAllSeries(@RequestHeader("X-User-Id") Long userId) {
+        return ResponseEntity.ok(tvSeriesRepository.findByUserId(userId));
     }
 
     @PostMapping

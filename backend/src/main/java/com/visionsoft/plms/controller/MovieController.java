@@ -1,6 +1,7 @@
 package com.visionsoft.plms.controller;
 
 import com.visionsoft.plms.dto.AddMovieRequest;
+import com.visionsoft.plms.dto.UpdateMovieRequest;
 import com.visionsoft.plms.entity.Movie;
 import com.visionsoft.plms.repository.MovieRepository;
 import com.visionsoft.plms.service.MovieService;
@@ -21,9 +22,10 @@ public class MovieController {
         this.movieRepository = movieRepository;
     }
 
+    // --- GÜNCELLENDİ: Sadece giriş yapan kullanıcının filmlerini getirir ---
     @GetMapping
-    public List<Movie> getAllMovies() {
-        return movieRepository.findAll();
+    public ResponseEntity<List<Movie>> getAllMovies(@RequestHeader("X-User-Id") Long userId) {
+        return ResponseEntity.ok(movieRepository.findByUserId(userId));
     }
 
     @PostMapping
@@ -50,7 +52,7 @@ public class MovieController {
     @PutMapping("/{id}")
     public ResponseEntity<Movie> updateMovie(
             @PathVariable Long id,
-            @RequestBody com.visionsoft.plms.dto.UpdateMovieRequest request,
+            @RequestBody UpdateMovieRequest request,
             @RequestHeader("X-User-Id") Long userId) {
 
         Movie updatedMovie = movieService.updateMovie(id, request, userId);

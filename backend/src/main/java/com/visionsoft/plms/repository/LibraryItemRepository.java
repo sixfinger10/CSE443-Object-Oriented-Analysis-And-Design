@@ -8,16 +8,12 @@ import java.util.List;
 
 @Repository
 public interface LibraryItemRepository extends JpaRepository<LibraryItem, Long> {
-    
-    // Kullanıcının tüm kitaplarını getir
+
+    // Toplam öğe sayısı (Kitap + Film + Müzik + Dizi)
+    Long countByUserId(Long userId);
+
+    // Toplam Favori sayısı
+    Long countByUserIdAndFavorite(Long userId, boolean favorite);
+
     List<LibraryItem> findByUserId(Long userId);
-    
-    // Başlığa göre arama (like)
-    List<LibraryItem> findByTitleContainingIgnoreCase(String title);
-    
-    // Kullanıcı ve tip bazlı arama
-    List<LibraryItem> findByUserIdAndType(Long userId, String type);
-    
-    // Kullanıcı ve durum bazlı arama
-    List<LibraryItem> findByUserIdAndStatus(Long userId, String status);
 }

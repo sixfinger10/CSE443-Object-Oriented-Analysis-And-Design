@@ -13,6 +13,9 @@ import java.util.Optional;
 @Repository
 public interface MovieRepository extends JpaRepository<Movie, Long> {
 
+    // --- YENİ EKLENEN: User ID'ye göre liste ---
+    List<Movie> findByUserId(Long userId);
+
     // 1. Service için: IMDb ID ve User kontrolü
     Optional<Movie> findByImdbIdAndUser(String imdbId, User user);
 
@@ -26,13 +29,11 @@ public interface MovieRepository extends JpaRepository<Movie, Long> {
                                                 @Param("title") String title,
                                                 @Param("director") String director);
 
-    // --- 4. HEAD'DEN GELEN (KRİTİK): Sadece İsim Kontrolü ---
-    // Yönetmen girilmediyse manuel eklemelerde duplicate'i önleyen metod
+    // --- 4. Sadece İsim Kontrolü ---
     @Query("SELECT m FROM Movie m WHERE m.user.id = :userId AND m.title = :title")
     List<Movie> findByUserIdAndTitle(@Param("userId") Long userId, @Param("title") String title);
 
-    // --- 5. MAIN'DEN GELEN: Detaylı Duplicate Kontrolü ---
-    // (Şu an kullanmasak bile main'de olduğu için silmeyelim, dursun)
+    // --- 5. Detaylı Duplicate Kontrolü ---
     @Query("SELECT m FROM Movie m WHERE m.user.id = :userId " +
             "AND m.title = :title " +
             "AND m.director = :director " +

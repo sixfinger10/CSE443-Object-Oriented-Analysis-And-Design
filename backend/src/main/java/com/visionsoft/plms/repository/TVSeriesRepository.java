@@ -13,6 +13,9 @@ import java.util.Optional;
 @Repository
 public interface TVSeriesRepository extends JpaRepository<TVSeries, Long> {
 
+    // --- YENİ EKLENEN: User ID'ye göre liste ---
+    List<TVSeries> findByUserId(Long userId);
+
     // 1. API Kontrolü: IMDb ID varsa duplicate olmasın
     Optional<TVSeries> findByImdbIdAndUser(String imdbId, User user);
 
