@@ -27,49 +27,38 @@ public class DashboardController {
         this.musicRepository = musicRepository;
     }
 
-    // TODO: Auth system ready when this method will be deleted
-    private Long getUserId() {
-        return 1L;
-    }
-
     @GetMapping("/total-items")
-    public ResponseEntity<Long> getTotalItems() {
-        Long userId = getUserId();
+    public ResponseEntity<Long> getTotalItems(@RequestHeader("userId") Long userId) {
         Long count = mediaItemRepository.countByUserId(userId);
         return ResponseEntity.ok(count);
     }
 
     @GetMapping("/total-books")
-    public ResponseEntity<Long> getTotalBooks() {
-        Long userId = getUserId();
+    public ResponseEntity<Long> getTotalBooks(@RequestHeader("userId") Long userId) {
         Long count = bookRepository.countByUserId(userId);
         return ResponseEntity.ok(count);
     }
 
     @GetMapping("/total-movies")
-    public ResponseEntity<Long> getTotalMovies() {
-        Long userId = getUserId();
+    public ResponseEntity<Long> getTotalMovies(@RequestHeader("userId") Long userId) {
         Long count = movieRepository.countByUserId(userId);
         return ResponseEntity.ok(count);
     }
 
     @GetMapping("/total-series")
-    public ResponseEntity<Long> getTotalSeries() {
-        Long userId = getUserId();
+    public ResponseEntity<Long> getTotalSeries(@RequestHeader("userId") Long userId) {
         Long count = tvSeriesRepository.countByUserId(userId);
         return ResponseEntity.ok(count);
     }
 
     @GetMapping("/total-music")
-    public ResponseEntity<Long> getTotalMusic() {
-        Long userId = getUserId();
+    public ResponseEntity<Long> getTotalMusic(@RequestHeader("userId") Long userId) {
         Long count = musicRepository.countByUserId(userId);
         return ResponseEntity.ok(count);
     }
 
     @GetMapping("/total-favorites")
-    public ResponseEntity<Long> getTotalFavorites() {
-        Long userId = getUserId();
+    public ResponseEntity<Long> getTotalFavorites(@RequestHeader("userId") Long userId) {
         Long count = mediaItemRepository.countByUserIdAndFavorite(userId, true);
         return ResponseEntity.ok(count);
     }
