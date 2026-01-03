@@ -1,8 +1,7 @@
 @startuml
-
-' Ayarlar (Görünüm için)
+!theme plain
+hide empty methods
 skinparam classAttributeIconSize 0
-skinparam componentStyle uml2
 
 package "com.visionsoft.plms.entity" {
     abstract class LibraryItem {
@@ -22,8 +21,6 @@ package "com.visionsoft.plms.entity" {
         + String isbn
         + String publisher
         + Integer pageCount
-        + String language
-        + Integer publicationYear
     }
 
     class Movie {
@@ -31,17 +28,13 @@ package "com.visionsoft.plms.entity" {
         + Integer durationMinutes
         + String imdbId
         + Double imdbScore
-        + Integer releaseYear
-        + String castMembers
     }
 
     class TVSeries {
         + String creator
         + Integer seasonCount
-        + Integer episodeCount
         + String network
         + String imdbId
-        + Double imdbScore
     }
 
     class Music {
@@ -49,7 +42,6 @@ package "com.visionsoft.plms.entity" {
         + String album
         + String mbid
         + Integer durationSeconds
-        + Integer trackCount
     }
 
     class User {
@@ -57,6 +49,27 @@ package "com.visionsoft.plms.entity" {
         + String username
         + String email
         + String password
+        + LocalDateTime createdAt
+    }
+
+    class MediaList {
+        + Long id
+        + String name
+        + LocalDateTime createdAt
+    }
+
+    class MediaListItem {
+        + Long id
+        + Integer itemOrder
+        + LocalDateTime addedAt
+    }
+
+    class PasswordResetToken {
+        + Long id
+        + String email
+        + String resetCode
+        + LocalDateTime expiresAt
+        + Boolean isUsed
     }
 
     ' İlişkiler (Inheritance)
@@ -65,46 +78,61 @@ package "com.visionsoft.plms.entity" {
     LibraryItem <|-- TVSeries
     LibraryItem <|-- Music
 
-    ' İlişki (Composition)
-    User "1" -- "*" LibraryItem : has >
+    ' İlişkiler (Associations)
+    User "1" *-- "*" LibraryItem : owns >
+    User "1" *-- "*" MediaList : creates >
+    MediaList "1" *-- "*" MediaListItem : contains >
+    MediaListItem "*" --> "1" LibraryItem : references >
+    User "1" -- "*" PasswordResetToken : has >
+}
+
+package "com.visionsoft.plms.dto" {
+    class LibraryItemDTO {
+        + Long id
+        + String title
+        + ItemType type
+        + (all fields flattened)
+    }
 }
 
 package "com.visionsoft.plms.controller" {
+    class AuthController
+    class LibraryController
+    class DashboardController
     class BookController
     class MovieController
-    class TVSeriesController
     class MusicController
+    class TVSeriesController
 }
 
 package "com.visionsoft.plms.service" {
+    class AuthService
+    class EmailService
+    class ImportExportService
     class BookService
     class MovieService
-    class TVSeriesService
-    class MusicService
 }
 
 package "com.visionsoft.plms.repository" {
+    interface UserRepository
+    interface LibraryItemRepository
+    interface PasswordResetTokenRepository
     interface BookRepository
-    interface MovieRepository
-    interface TVSeriesRepository
-    interface MusicRepository
 }
 
-' MVC İlişkileri
+' Service Relationships
+AuthController --> AuthService
+AuthService --> UserRepository
+AuthService --> PasswordResetTokenRepository
+AuthService --> EmailService : sends emails via >
+
+LibraryController --> ImportExportService
+ImportExportService ..> LibraryItemDTO : uses >
+ImportExportService --> LibraryItemRepository : reads/writes >
+
 BookController --> BookService
 BookService --> BookRepository
-BookRepository ..> Book : manages
 
-MovieController --> MovieService
-MovieService --> MovieRepository
-MovieRepository ..> Movie : manages
-
-TVSeriesController --> TVSeriesService
-TVSeriesService --> TVSeriesRepository
-TVSeriesRepository ..> TVSeries : manages
-
-MusicController --> MusicService
-MusicService --> MusicRepository
-MusicRepository ..> Music : manages
+DashboardController --> LibraryItemRepository : counts items >
 
 @enduml
