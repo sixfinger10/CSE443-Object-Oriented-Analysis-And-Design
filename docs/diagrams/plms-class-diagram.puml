@@ -1,0 +1,110 @@
+@startuml
+
+' Ayarlar (Görünüm için)
+skinparam classAttributeIconSize 0
+skinparam componentStyle uml2
+
+package "com.visionsoft.plms.entity" {
+    abstract class LibraryItem {
+        + Long id
+        + String title
+        + String description
+        + String imageUrl
+        + ItemType type
+        + ItemStatus status
+        + Double rating
+        + Boolean favorite
+        + Date dateAdded
+    }
+
+    class Book {
+        + String author
+        + String isbn
+        + String publisher
+        + Integer pageCount
+        + String language
+        + Integer publicationYear
+    }
+
+    class Movie {
+        + String director
+        + Integer durationMinutes
+        + String imdbId
+        + Double imdbScore
+        + Integer releaseYear
+        + String castMembers
+    }
+
+    class TVSeries {
+        + String creator
+        + Integer seasonCount
+        + Integer episodeCount
+        + String network
+        + String imdbId
+        + Double imdbScore
+    }
+
+    class Music {
+        + String artist
+        + String album
+        + String mbid
+        + Integer durationSeconds
+        + Integer trackCount
+    }
+
+    class User {
+        + Long id
+        + String username
+        + String email
+        + String password
+    }
+
+    ' İlişkiler (Inheritance)
+    LibraryItem <|-- Book
+    LibraryItem <|-- Movie
+    LibraryItem <|-- TVSeries
+    LibraryItem <|-- Music
+
+    ' İlişki (Composition)
+    User "1" -- "*" LibraryItem : has >
+}
+
+package "com.visionsoft.plms.controller" {
+    class BookController
+    class MovieController
+    class TVSeriesController
+    class MusicController
+}
+
+package "com.visionsoft.plms.service" {
+    class BookService
+    class MovieService
+    class TVSeriesService
+    class MusicService
+}
+
+package "com.visionsoft.plms.repository" {
+    interface BookRepository
+    interface MovieRepository
+    interface TVSeriesRepository
+    interface MusicRepository
+}
+
+' MVC İlişkileri
+BookController --> BookService
+BookService --> BookRepository
+BookRepository ..> Book : manages
+
+MovieController --> MovieService
+MovieService --> MovieRepository
+MovieRepository ..> Movie : manages
+
+TVSeriesController --> TVSeriesService
+TVSeriesService --> TVSeriesRepository
+TVSeriesRepository ..> TVSeries : manages
+
+MusicController --> MusicService
+MusicService --> MusicRepository
+MusicRepository ..> Music : manages
+
+@enduml

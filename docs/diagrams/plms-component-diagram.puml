@@ -1,0 +1,41 @@
+@startuml
+
+skinparam componentStyle uml2
+
+package "Client App" {
+    [Frontend (Web/Mobile)] as Frontend
+}
+
+package "PLMS Backend System" {
+    [API Gateway / Controllers] as Controllers
+    [Service Layer (Business Logic)] as Services
+    [Data Access Layer (Repositories)] as Repositories
+}
+
+database "PostgreSQL (Supabase)" as DB
+
+package "External Services" {
+    [Google Books API] as GoogleAPI
+    [OMDb API] as OMDbAPI
+    [Last.fm API] as LastFmAPI
+}
+
+' Bağlantılar
+Frontend .> Controllers : HTTP/REST (JSON)
+Controllers --> Services
+Services --> Repositories
+Repositories --> DB : JDBC/Hibernate
+
+' Dış Servis Bağlantıları
+Services ..> GoogleAPI : REST (Book Info)
+Services ..> OMDbAPI : REST (Movie/Series Info)
+Services ..> LastFmAPI : REST (Music Info)
+
+note right of Services
+  İş Mantığı Burada:
+  - Duplicate Kontrolü
+  - API Entegrasyonu
+  - Yetki Kontrolü
+end note
+
+@enduml
