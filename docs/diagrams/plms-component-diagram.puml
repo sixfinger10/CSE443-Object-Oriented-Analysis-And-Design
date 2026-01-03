@@ -32,10 +32,10 @@ Services ..> OMDbAPI : REST (Movie/Series Info)
 Services ..> LastFmAPI : REST (Music Info)
 
 note right of Services
-  İş Mantığı Burada:
-  - Duplicate Kontrolü
-  - API Entegrasyonu
-  - Yetki Kontrolü
+    Business Logic Here:
+    - Duplicate Control
+    - API Integration
+    - Authorization Control
 end note
 
 @enduml
