@@ -16,11 +16,16 @@ public class Book extends LibraryItem {
     private String genre;
     private String language;
 
+    // ✅ YENİ - Progress Tracking
+    @Column(name = "current_page")
+    private Integer currentPage;  // Kullanıcı hangi sayfada kaldı
+
     public Book() {
         this.type = ItemType.BOOK;
     }
 
-    // Getters and Setters
+    // ==================== GETTERS & SETTERS ====================
+
     public String getAuthor() {
         return author;
     }
@@ -75,5 +80,14 @@ public class Book extends LibraryItem {
 
     public void setLanguage(String language) {
         this.language = language;
+    }
+
+    // ✅ YENİ - Current Page Getter/Setter
+    public Integer getCurrentPage() {
+        return currentPage;
+    }
+
+    public void setCurrentPage(Integer currentPage) {
+        this.currentPage = currentPage;
     }
 }

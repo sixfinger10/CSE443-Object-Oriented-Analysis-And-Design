@@ -13,7 +13,7 @@ public class UpdateTVSeriesRequest {
     private Double rating;
     private String imageUrl;
 
-    // Dizi Özel Alanlar
+    // Dizi Ã–zel Alanlar
     private String creator;
     private Integer seasonCount;
     private Integer episodeCount;

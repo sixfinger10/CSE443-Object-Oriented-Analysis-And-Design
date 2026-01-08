@@ -1,15 +1,10 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import './Register.css';
-import axios from 'axios';
+import authService from '../services/auth.service';
+import { RegisterRequest } from '../types/auth.types';
 
-const API_URL = 'http://localhost:3000/api/auth/register';
-
-interface RegisterFormData {
-  fullName: string;
-  email: string;
-  username: string;
-  password: string;
+interface RegisterFormData extends RegisterRequest {
   confirmPassword: string;
 }
 
@@ -17,7 +12,6 @@ const Register: React.FC = () => {
   const navigate = useNavigate();
   
   const [formData, setFormData] = useState<RegisterFormData>({
-    fullName: '',
     email: '',
     username: '',
     password: '',
@@ -38,25 +32,38 @@ const Register: React.FC = () => {
     if (error) setError('');
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setError('');
-    
-    if (!formData.fullName || !formData.email || !formData.username || !formData.password || !formData.confirmPassword) {
+  const validateForm = (): boolean => {
+    // Boş alan kontrolü
+    if (!formData.email || !formData.username || !formData.password || !formData.confirmPassword) {
       setError('Please fill in all fields.');
-      return;
+      return false;
     }
 
-    if (!formData.email.includes('@')) {
+    // Email formatı
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(formData.email)) {
       setError('Please enter a valid email address.');
-      return;
+      return false;
     }
 
+    // Username uzunluğu (backend validation: 3-50)
+    if (formData.username.length < 3) {
+      setError('Username must be at least 3 characters long.');
+      return false;
+    }
+
+    if (formData.username.length > 50) {
+      setError('Username must be at most 50 characters long.');
+      return false;
+    }
+
+    // Password uzunluğu (backend validation: min 8)
     if (formData.password.length < 8) {
       setError('Password must be at least 8 characters long.');
-      return;
+      return false;
     }
 
+    // Password karmaşıklığı
     const hasUppercase = /[A-Z]/.test(formData.password);
     const hasLowercase = /[a-z]/.test(formData.password);
     const hasNumber = /[0-9]/.test(formData.password);
@@ -64,44 +71,57 @@ const Register: React.FC = () => {
 
     if (!hasUppercase || !hasLowercase || !hasNumber || !hasSpecial) {
       setError('Password must contain uppercase, lowercase, number, and special character.');
-      return;
+      return false;
     }
 
+    // Password eşleşmesi
     if (formData.password !== formData.confirmPassword) {
       setError('Passwords do not match.');
+      return false;
+    }
+
+    return true;
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError('');
+    
+    // Form validasyonu
+    if (!validateForm()) {
       return;
     }
 
     setIsLoading(true);
 
     try {
-      const response = await axios.post(API_URL, {
-        fullName: formData.fullName,
+      // Backend'e sadece email, username, password gönder
+      const registerData: RegisterRequest = {
         email: formData.email,
         username: formData.username,
         password: formData.password,
-      });
+      };
 
-      console.log('Registration successful:', response.data);
+      // AuthService kullanarak kayıt yap
+      const response = await authService.register(registerData);
       
-      if (response.data.token) {
-        localStorage.setItem('authToken', response.data.token);
-        localStorage.setItem('userName', formData.fullName);
-        localStorage.setItem('userEmail', formData.email);
+      // Backend'den success:true geldi mi?
+      if (response.success) {
+        console.log('✅ Registration successful:', response);
+        
+        // Başarı mesajı
+        alert('Registration successful! Please login with your credentials.');
+        
+        // Login sayfasına yönlendir
+        navigate('/login');
+      } else {
+        // success:false ise hata mesajını göster
+        setError(response.message || 'Registration failed');
       }
-      
-      alert('Registration successful!');
-      
-      // Login sayfasına yönlendir
-      navigate('/login');
       
     } catch (err: any) {
-      console.error('Registration error:', err);
-      if (err.response) {
-        setError(err.response.data.message || 'Registration failed. Please try again.');
-      } else {
-        setError('Unable to connect to server. Is backend running?');
-      }
+      console.error('❌ Registration error:', err);
+      setError(err.message || 'Registration failed. Please try again.');
     } finally {
       setIsLoading(false);
     }
@@ -135,15 +155,16 @@ const Register: React.FC = () => {
 
         <form onSubmit={handleSubmit} className="register-form">
           <div className="form-group">
-            <label htmlFor="fullName">Full Name *</label>
+            <label htmlFor="username">Username *</label>
             <input
               type="text"
-              id="fullName"
-              name="fullName"
-              value={formData.fullName}
+              id="username"
+              name="username"
+              value={formData.username}
               onChange={handleChange}
-              placeholder="John Doe"
+              placeholder="Choose a username (3-50 characters)"
               disabled={isLoading}
+              autoComplete="username"
               required
             />
           </div>
@@ -156,22 +177,9 @@ const Register: React.FC = () => {
               name="email"
               value={formData.email}
               onChange={handleChange}
-              placeholder="john@example.com"
+              placeholder="your.email@example.com"
               disabled={isLoading}
-              required
-            />
-          </div>
-
-          <div className="form-group">
-            <label htmlFor="username">Username *</label>
-            <input
-              type="text"
-              id="username"
-              name="username"
-              value={formData.username}
-              onChange={handleChange}
-              placeholder="johndoe"
-              disabled={isLoading}
+              autoComplete="email"
               required
             />
           </div>
@@ -187,6 +195,7 @@ const Register: React.FC = () => {
                 onChange={handleChange}
                 placeholder="Enter a strong password"
                 disabled={isLoading}
+                autoComplete="new-password"
                 required
               />
               <button
@@ -194,6 +203,7 @@ const Register: React.FC = () => {
                 className="password-toggle"
                 onClick={() => setShowPassword(!showPassword)}
                 disabled={isLoading}
+                aria-label="Toggle password visibility"
               >
                 {showPassword ? '👁️' : '👁️‍🗨️'}
               </button>
@@ -214,6 +224,7 @@ const Register: React.FC = () => {
                 onChange={handleChange}
                 placeholder="Re-enter your password"
                 disabled={isLoading}
+                autoComplete="new-password"
                 required
               />
               <button
@@ -221,6 +232,7 @@ const Register: React.FC = () => {
                 className="password-toggle"
                 onClick={() => setShowConfirmPassword(!showConfirmPassword)}
                 disabled={isLoading}
+                aria-label="Toggle confirm password visibility"
               >
                 {showConfirmPassword ? '👁️' : '👁️‍🗨️'}
               </button>

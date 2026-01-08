@@ -49,7 +49,7 @@ public class ImportExportService {
         List<LibraryItemDTO> dtos = convertToDTO(items);
         
         StringBuilder csv = new StringBuilder();
-        csv.append("ID,Title,Description,Type,Status,Rating,Favorite,Author,ISBN,Publisher,Language,Genre,Date Added\n");
+        csv.append("ID,Title,Description,Type,Status,Rating,Favorite,Author,ISBN,Director,Artist,Platform,Date Added\n");
         
         for (LibraryItemDTO item : dtos) {
             csv.append(escapeCSV(String.valueOf(item.getId()))).append(",")
@@ -61,9 +61,9 @@ public class ImportExportService {
                .append(item.isFavorite()).append(",")
                .append(escapeCSV(item.getAuthor())).append(",")
                .append(escapeCSV(item.getIsbn())).append(",")
-               .append(escapeCSV(item.getPublisher())).append(",")
-               .append(escapeCSV(item.getLanguage())).append(",")
-               .append(escapeCSV(item.getBookGenre())).append(",")
+               .append(escapeCSV(item.getDirector())).append(",")
+               .append(escapeCSV(item.getArtist())).append(",")
+               .append(escapeCSV(item.getPlatform())).append(",")
                .append(escapeCSV(String.valueOf(item.getDateAdded()))).append("\n");
         }
         
@@ -92,11 +92,7 @@ public class ImportExportService {
                 Book book = (Book) item;
                 dto.setAuthor(book.getAuthor());
                 dto.setIsbn(book.getIsbn());
-                dto.setPublisher(book.getPublisher());
-                dto.setPublicationYear(book.getPublicationYear());
                 dto.setPageCount(book.getPageCount());
-                dto.setBookGenre(book.getGenre());
-                dto.setLanguage(book.getLanguage());
             } else if (item instanceof Movie) {
                 Movie movie = (Movie) item;
                 dto.setDirector(movie.getDirector());
@@ -110,7 +106,6 @@ public class ImportExportService {
             } else if (item instanceof TVSeries) {
                 TVSeries tvSeries = (TVSeries) item;
                 dto.setDirector(tvSeries.getCreator());
-                dto.setStartYear(tvSeries.getStartYear());
             }
             
             dtos.add(dto);
@@ -143,7 +138,7 @@ public class ImportExportService {
                 case BOOK:
                     Book book = null;
                     
-                    // ÖNCE ISBN'E BAK
+                    // ISBN varsa, ISBN'e göre kontrol et
                     if (dto.getIsbn() != null && !dto.getIsbn().isEmpty()) {
                         List<Book> existingBooks = bookRepository.findByUserIdAndIsbn(user.getId(), dto.getIsbn());
                         if (!existingBooks.isEmpty()) {
@@ -152,34 +147,21 @@ public class ImportExportService {
                         }
                     }
                     
-                    // ISBN YOKSA VEYA BULUNAMADIYSA, TÜM FIELD'LARA BAK
+                    // ISBN yoksa veya bulunamadıysa, Title + Author'a göre kontrol et
                     if (book == null && dto.getTitle() != null && dto.getAuthor() != null) {
-                        List<Book> exactMatches = bookRepository.findExactDuplicate(
-                            user.getId(),
-                            dto.getTitle(),
-                            dto.getAuthor(),
-                            dto.getIsbn(),
-                            dto.getPublisher(),
-                            dto.getPageCount(),
-                            dto.getLanguage(),
-                            dto.getBookGenre(),
-                            dto.getPublicationYear()
+                        List<Book> existingBooks = bookRepository.findByUserIdAndTitleAndAuthor(
+                            user.getId(), dto.getTitle(), dto.getAuthor()
                         );
-                        
-                        if (!exactMatches.isEmpty()) {
-                            book = exactMatches.get(0);
-                            System.out.println("=== EXACT DUPLICATE FOUND (All Fields Including ISBN): " + dto.getTitle() + " - Updating ID: " + book.getId() + " ===");
+                        if (!existingBooks.isEmpty()) {
+                            book = existingBooks.get(0);
+                            System.out.println("=== DUPLICATE FOUND (Title+Author): " + dto.getTitle() + " - Updating ID: " + book.getId() + " ===");
                         }
                     }
                     
-                    // HALA BULUNAMADIYSA, YENİ KAYIT OLUŞTUR
+                    // Hala bulunamadıysa, yeni kayıt oluştur
                     if (book == null) {
                         book = new Book();
-                        if (dto.getIsbn() != null && !dto.getIsbn().isEmpty()) {
-                            System.out.println("=== NEW BOOK: " + dto.getTitle() + " (ISBN: " + dto.getIsbn() + ") ===");
-                        } else {
-                            System.out.println("=== NEW BOOK: " + dto.getTitle() + " (Different edition/version) ===");
-                        }
+                        System.out.println("=== NEW BOOK: " + dto.getTitle() + " ===");
                     }
                     
                     // User'ı set et (sadece yeni kayıtlarda)
@@ -196,11 +178,7 @@ public class ImportExportService {
                     book.setFavorite(dto.isFavorite());
                     book.setAuthor(dto.getAuthor());
                     book.setIsbn(dto.getIsbn());
-                    book.setPublisher(dto.getPublisher());
-                    book.setPublicationYear(dto.getPublicationYear());
                     book.setPageCount(dto.getPageCount());
-                    book.setGenre(dto.getBookGenre());
-                    book.setLanguage(dto.getLanguage());
                     
                     savedItem = bookRepository.save(book);
                     break;
@@ -208,17 +186,14 @@ public class ImportExportService {
                 case MOVIE:
                     Movie movie = null;
                     
-                    // Title + Director + ReleaseYear'a göre kontrol et
+                    // Title + Director'a göre kontrol et
                     if (dto.getTitle() != null && dto.getDirector() != null) {
-                        List<Movie> exactMatches = movieRepository.findExactDuplicate(
-                            user.getId(), 
-                            dto.getTitle(), 
-                            dto.getDirector(),
-                            dto.getReleaseYear()
+                        List<Movie> existingMovies = movieRepository.findByUserIdAndTitleAndDirector(
+                            user.getId(), dto.getTitle(), dto.getDirector()
                         );
-                        if (!exactMatches.isEmpty()) {
-                            movie = exactMatches.get(0);
-                            System.out.println("=== EXACT DUPLICATE FOUND (Movie): " + dto.getTitle() + " - Updating ID: " + movie.getId() + " ===");
+                        if (!existingMovies.isEmpty()) {
+                            movie = existingMovies.get(0);
+                            System.out.println("=== DUPLICATE FOUND (Movie): " + dto.getTitle() + " - Updating ID: " + movie.getId() + " ===");
                         }
                     }
                     
@@ -250,17 +225,14 @@ public class ImportExportService {
                 case MUSIC:
                     Music music = null;
                     
-                    // Title + Artist + Album'e göre kontrol et
+                    // Title + Artist'e göre kontrol et
                     if (dto.getTitle() != null && dto.getArtist() != null) {
-                        List<Music> exactMatches = musicRepository.findExactDuplicate(
-                            user.getId(), 
-                            dto.getTitle(), 
-                            dto.getArtist(),
-                            dto.getAlbum()
+                        List<Music> existingMusic = musicRepository.findByUserIdAndTitleAndArtist(
+                            user.getId(), dto.getTitle(), dto.getArtist()
                         );
-                        if (!exactMatches.isEmpty()) {
-                            music = exactMatches.get(0);
-                            System.out.println("=== EXACT DUPLICATE FOUND (Music): " + dto.getTitle() + " - Updating ID: " + music.getId() + " ===");
+                        if (!existingMusic.isEmpty()) {
+                            music = existingMusic.get(0);
+                            System.out.println("=== DUPLICATE FOUND (Music): " + dto.getTitle() + " - Updating ID: " + music.getId() + " ===");
                         }
                     }
                     
@@ -292,17 +264,14 @@ public class ImportExportService {
                 case TV_SERIES:
                     TVSeries tvSeries = null;
                     
-                    // Title + Creator + StartYear'a göre kontrol et
+                    // Title + Creator'a göre kontrol et
                     if (dto.getTitle() != null && dto.getDirector() != null) {
-                        List<TVSeries> exactMatches = tvSeriesRepository.findExactDuplicate(
-                            user.getId(), 
-                            dto.getTitle(), 
-                            dto.getDirector(),
-                            dto.getStartYear()
+                        List<TVSeries> existingSeries = tvSeriesRepository.findByUserIdAndTitleAndCreator(
+                            user.getId(), dto.getTitle(), dto.getDirector()
                         );
-                        if (!exactMatches.isEmpty()) {
-                            tvSeries = exactMatches.get(0);
-                            System.out.println("=== EXACT DUPLICATE FOUND (TVSeries): " + dto.getTitle() + " - Updating ID: " + tvSeries.getId() + " ===");
+                        if (!existingSeries.isEmpty()) {
+                            tvSeries = existingSeries.get(0);
+                            System.out.println("=== DUPLICATE FOUND (TVSeries): " + dto.getTitle() + " - Updating ID: " + tvSeries.getId() + " ===");
                         }
                     }
                     
@@ -325,7 +294,6 @@ public class ImportExportService {
                     tvSeries.setRating(dto.getRating());
                     tvSeries.setFavorite(dto.isFavorite());
                     tvSeries.setCreator(dto.getDirector());
-                    tvSeries.setStartYear(dto.getStartYear());
                     
                     savedItem = tvSeriesRepository.save(tvSeries);
                     break;
@@ -341,39 +309,11 @@ public class ImportExportService {
                 savedDto.setUserId(savedItem.getUser().getId());
                 savedDto.setTitle(savedItem.getTitle());
                 savedDto.setDescription(savedItem.getDescription());
-                savedDto.setImageUrl(savedItem.getImageUrl());
                 savedDto.setType(savedItem.getType());
                 savedDto.setStatus(savedItem.getStatus());
                 savedDto.setRating(savedItem.getRating());
                 savedDto.setFavorite(savedItem.isFavorite());
                 savedDto.setDateAdded(savedItem.getDateAdded());
-                
-                // Type-specific fields ekle
-                if (savedItem instanceof Book) {
-                    Book book = (Book) savedItem;
-                    savedDto.setAuthor(book.getAuthor());
-                    savedDto.setIsbn(book.getIsbn());
-                    savedDto.setPublisher(book.getPublisher());
-                    savedDto.setPublicationYear(book.getPublicationYear());
-                    savedDto.setPageCount(book.getPageCount());
-                    savedDto.setBookGenre(book.getGenre());
-                    savedDto.setLanguage(book.getLanguage());
-                } else if (savedItem instanceof Movie) {
-                    Movie movie = (Movie) savedItem;
-                    savedDto.setDirector(movie.getDirector());
-                    savedDto.setDuration(movie.getDurationMinutes());
-                    savedDto.setReleaseYear(movie.getReleaseYear());
-                } else if (savedItem instanceof Music) {
-                    Music music = (Music) savedItem;
-                    savedDto.setArtist(music.getArtist());
-                    savedDto.setAlbum(music.getAlbum());
-                    savedDto.setTrackCount(music.getTrackCount());
-                } else if (savedItem instanceof TVSeries) {
-                    TVSeries tvSeries = (TVSeries) savedItem;
-                    savedDto.setDirector(tvSeries.getCreator());
-                    savedDto.setStartYear(tvSeries.getStartYear());
-                }
-                
                 savedItems.add(savedDto);
             }
         }

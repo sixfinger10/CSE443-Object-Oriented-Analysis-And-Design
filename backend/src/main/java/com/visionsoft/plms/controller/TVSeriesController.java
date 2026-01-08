@@ -22,10 +22,9 @@ public class TVSeriesController {
         this.tvSeriesRepository = tvSeriesRepository;
     }
 
-    // --- GÜNCELLENDİ: Sadece giriş yapan kullanıcının dizilerini getirir ---
     @GetMapping
-    public ResponseEntity<List<TVSeries>> getAllSeries(@RequestHeader("X-User-Id") Long userId) {
-        return ResponseEntity.ok(tvSeriesRepository.findByUserId(userId));
+    public List<TVSeries> getAllSeries() {
+        return tvSeriesRepository.findAll();
     }
 
     @PostMapping
@@ -40,7 +39,7 @@ public class TVSeriesController {
             @PathVariable Long id,
             @RequestHeader("X-User-Id") Long userId) {
         tvSeriesService.deleteSeries(id, userId);
-        return ResponseEntity.ok("Dizi başarıyla silindi. ID: " + id);
+        return ResponseEntity.ok("Dizi baÅŸarÄ±yla silindi. ID: " + id);
     }
 
     @PutMapping("/{id}")

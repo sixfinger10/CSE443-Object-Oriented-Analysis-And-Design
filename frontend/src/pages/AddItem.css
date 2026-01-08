@@ -67,6 +67,90 @@
   font-weight: 600;
 }
 
+/* ✅ YENİ: METHOD SELECTION (ISBN vs MANUAL) */
+.method-selection {
+  margin-bottom: 32px;
+  padding: 24px;
+  background: linear-gradient(135deg, #f8f9ff 0%, #fff5f5 100%);
+  border-radius: 12px;
+  border: 2px solid #e0e7ff;
+}
+
+.method-selection > label {
+  display: block;
+  font-size: 16px;
+  font-weight: 600;
+  color: #1a202c;
+  margin-bottom: 16px;
+}
+
+.method-buttons {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+}
+
+.method-btn {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 20px;
+  background: white;
+  border: 2px solid #e2e8f0;
+  border-radius: 12px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  text-align: left;
+}
+
+.method-btn:hover {
+  border-color: #667eea;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.15);
+}
+
+.method-btn.active {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  border-color: #667eea;
+  color: white;
+  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+}
+
+.method-icon {
+  font-size: 32px;
+  flex-shrink: 0;
+}
+
+.method-details {
+  flex: 1;
+}
+
+.method-details strong {
+  display: block;
+  font-size: 16px;
+  font-weight: 600;
+  margin-bottom: 4px;
+}
+
+.method-btn.active .method-details strong,
+.method-btn.active .method-details small {
+  color: white;
+}
+
+.method-details small {
+  font-size: 13px;
+  color: #718096;
+  line-height: 1.4;
+}
+
+.form-help {
+  display: block;
+  margin-top: 8px;
+  font-size: 13px;
+  color: #718096;
+  font-style: italic;
+}
+
 /* FORM */
 .item-form {
   background: white;
@@ -250,6 +334,19 @@
 
   .type-buttons {
     grid-template-columns: repeat(2, 1fr);
+  }
+
+  /* ✅ YENİ: Method buttons mobile responsive */
+  .method-buttons {
+    grid-template-columns: 1fr;
+  }
+
+  .method-btn {
+    padding: 16px;
+  }
+
+  .method-icon {
+    font-size: 28px;
   }
 
   .item-form {

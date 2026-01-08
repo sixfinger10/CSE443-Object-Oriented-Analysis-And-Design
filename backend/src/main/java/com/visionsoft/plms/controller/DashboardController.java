@@ -1,71 +1,177 @@
 package com.visionsoft.plms.controller;
 
 import com.visionsoft.plms.repository.*;
+import com.visionsoft.plms.util.JwtUtil;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.HashMap;
+import java.util.Map;
+
 @RestController
-@RequestMapping("/api/dashboard") // Endpoint'i özelleştirdim, daha düzenli olsun
-@CrossOrigin(origins = "*") // Frontend rahat erişsin
+@RequestMapping("/api")
+@CrossOrigin(origins = "*")
 public class DashboardController {
 
-    private final LibraryItemRepository libraryItemRepository; // MediaItem yerine LibraryItem
+    private final MediaItemRepository mediaItemRepository;
     private final BookRepository bookRepository;
     private final MovieRepository movieRepository;
     private final TVSeriesRepository tvSeriesRepository;
     private final MusicRepository musicRepository;
+    private final JwtUtil jwtUtil;
 
-    public DashboardController(LibraryItemRepository libraryItemRepository,
+    public DashboardController(MediaItemRepository mediaItemRepository,
                                BookRepository bookRepository,
                                MovieRepository movieRepository,
                                TVSeriesRepository tvSeriesRepository,
-                               MusicRepository musicRepository) {
-        this.libraryItemRepository = libraryItemRepository;
+                               MusicRepository musicRepository,
+                               JwtUtil jwtUtil) {
+        this.mediaItemRepository = mediaItemRepository;
         this.bookRepository = bookRepository;
         this.movieRepository = movieRepository;
         this.tvSeriesRepository = tvSeriesRepository;
         this.musicRepository = musicRepository;
+        this.jwtUtil = jwtUtil;
     }
 
-    // 1. Toplam Kütüphane Öğesi Sayısı
+    /**
+     * Token'dan user ID çıkar
+     */
+    private Long getUserIdFromToken(String authHeader) {
+        if (authHeader == null || !authHeader.startsWith("Bearer ")) {
+            throw new RuntimeException("No authorization token found");
+        }
+
+        String token = authHeader.substring(7);
+        Long userId = jwtUtil.extractUserId(token);
+
+        if (userId == null) {
+            throw new RuntimeException("Invalid token");
+        }
+
+        return userId;
+    }
+
+    /**
+     * Tüm dashboard istatistiklerini tek endpoint'te döndür
+     */
+    @GetMapping("/stats")
+    public ResponseEntity<Map<String, Long>> getDashboardStats(
+            @RequestHeader("Authorization") String authHeader) {
+        try {
+            Long userId = getUserIdFromToken(authHeader);
+
+            Map<String, Long> stats = new HashMap<>();
+            stats.put("totalItems", mediaItemRepository.countByUserId(userId));
+            stats.put("totalBooks", bookRepository.countByUserId(userId));
+            stats.put("totalMovies", movieRepository.countByUserId(userId));
+            stats.put("totalSeries", tvSeriesRepository.countByUserId(userId));
+            stats.put("totalMusic", musicRepository.countByUserId(userId));
+            stats.put("totalFavorites", mediaItemRepository.countByUserIdAndFavorite(userId, true));
+
+            System.out.println("SUCCESS: Dashboard stats for user " + userId + ": " + stats);
+
+            return ResponseEntity.ok(stats);
+        } catch (Exception e) {
+            System.err.println("ERROR in getDashboardStats: " + e.getMessage());
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        }
+    }
+
+    /**
+     * Total items
+     */
     @GetMapping("/total-items")
-    public ResponseEntity<Long> getTotalItems(@RequestHeader("X-User-Id") Long userId) {
-        Long count = libraryItemRepository.countByUserId(userId);
-        return ResponseEntity.ok(count);
+    public ResponseEntity<Long> getTotalItems(
+            @RequestHeader("Authorization") String authHeader) {
+        try {
+            Long userId = getUserIdFromToken(authHeader);
+            Long count = mediaItemRepository.countByUserId(userId);
+            return ResponseEntity.ok(count);
+        } catch (Exception e) {
+            System.err.println("Error in getTotalItems: " + e.getMessage());
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        }
     }
 
-    // 2. Toplam Kitap Sayısı
+    /**
+     * Total books
+     */
     @GetMapping("/total-books")
-    public ResponseEntity<Long> getTotalBooks(@RequestHeader("X-User-Id") Long userId) {
-        Long count = bookRepository.countByUserId(userId);
-        return ResponseEntity.ok(count);
+    public ResponseEntity<Long> getTotalBooks(
+            @RequestHeader("Authorization") String authHeader) {
+        try {
+            Long userId = getUserIdFromToken(authHeader);
+            Long count = bookRepository.countByUserId(userId);
+            return ResponseEntity.ok(count);
+        } catch (Exception e) {
+            System.err.println("Error in getTotalBooks: " + e.getMessage());
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        }
     }
 
-    // 3. Toplam Film Sayısı
+    /**
+     * Total movies
+     */
     @GetMapping("/total-movies")
-    public ResponseEntity<Long> getTotalMovies(@RequestHeader("X-User-Id") Long userId) {
-        Long count = movieRepository.countByUserId(userId);
-        return ResponseEntity.ok(count);
+    public ResponseEntity<Long> getTotalMovies(
+            @RequestHeader("Authorization") String authHeader) {
+        try {
+            Long userId = getUserIdFromToken(authHeader);
+            Long count = movieRepository.countByUserId(userId);
+            return ResponseEntity.ok(count);
+        } catch (Exception e) {
+            System.err.println("Error in getTotalMovies: " + e.getMessage());
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        }
     }
 
-    // 4. Toplam Dizi Sayısı
+    /**
+     * Total series
+     */
     @GetMapping("/total-series")
-    public ResponseEntity<Long> getTotalSeries(@RequestHeader("X-User-Id") Long userId) {
-        Long count = tvSeriesRepository.countByUserId(userId);
-        return ResponseEntity.ok(count);
+    public ResponseEntity<Long> getTotalSeries(
+            @RequestHeader("Authorization") String authHeader) {
+        try {
+            Long userId = getUserIdFromToken(authHeader);
+            Long count = tvSeriesRepository.countByUserId(userId);
+            return ResponseEntity.ok(count);
+        } catch (Exception e) {
+            System.err.println("Error in getTotalSeries: " + e.getMessage());
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        }
     }
 
-    // 5. Toplam Müzik Sayısı
+    /**
+     * Total music
+     */
     @GetMapping("/total-music")
-    public ResponseEntity<Long> getTotalMusic(@RequestHeader("X-User-Id") Long userId) {
-        Long count = musicRepository.countByUserId(userId);
-        return ResponseEntity.ok(count);
+    public ResponseEntity<Long> getTotalMusic(
+            @RequestHeader("Authorization") String authHeader) {
+        try {
+            Long userId = getUserIdFromToken(authHeader);
+            Long count = musicRepository.countByUserId(userId);
+            return ResponseEntity.ok(count);
+        } catch (Exception e) {
+            System.err.println("Error in getTotalMusic: " + e.getMessage());
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        }
     }
 
-    // 6. Toplam Favori Sayısı (Tüm türler dahil)
+    /**
+     * Total favorites
+     */
     @GetMapping("/total-favorites")
-    public ResponseEntity<Long> getTotalFavorites(@RequestHeader("X-User-Id") Long userId) {
-        Long count = libraryItemRepository.countByUserIdAndFavorite(userId, true);
-        return ResponseEntity.ok(count);
+    public ResponseEntity<Long> getTotalFavorites(
+            @RequestHeader("Authorization") String authHeader) {
+        try {
+            Long userId = getUserIdFromToken(authHeader);
+            Long count = mediaItemRepository.countByUserIdAndFavorite(userId, true);
+            return ResponseEntity.ok(count);
+        } catch (Exception e) {
+            System.err.println("Error in getTotalFavorites: " + e.getMessage());
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        }
     }
 }

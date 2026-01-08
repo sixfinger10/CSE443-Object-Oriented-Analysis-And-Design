@@ -13,17 +13,14 @@ import java.util.Optional;
 @Repository
 public interface MusicRepository extends JpaRepository<Music, Long> {
 
-    // --- YENİ EKLENEN: User ID'ye göre liste ---
-    List<Music> findByUserId(Long userId);
-
-    // 1. Service için: MBID ve User kontrolü (Last.fm ID varsa)
+    // 1. Service iÃ§in: MBID ve User kontrolÃ¼ (Last.fm ID varsa)
     Optional<Music> findByMbidAndUser(String mbid, User user);
 
-    // 2. Dashboard için
+    // 2. Dashboard iÃ§in
     @Query("SELECT COUNT(m) FROM Music m WHERE m.user.id = :userId")
     Long countByUserId(@Param("userId") Long userId);
 
-    // 3. Duplicate check için - Title + Artist (Manuel girişler için)
+    // 3. Duplicate check iÃ§in - Title + Artist (Manuel giriÅŸler iÃ§in)
     @Query("SELECT m FROM Music m WHERE m.user.id = :userId AND m.title = :title AND m.artist = :artist")
     List<Music> findByUserIdAndTitleAndArtist(@Param("userId") Long userId, @Param("title") String title, @Param("artist") String artist);
 
@@ -31,7 +28,7 @@ public interface MusicRepository extends JpaRepository<Music, Long> {
     @Query("SELECT m FROM Music m WHERE m.user.id = :userId AND m.title = :title")
     List<Music> findByUserIdAndTitle(@Param("userId") Long userId, @Param("title") String title);
 
-    // 5. Duplicate check için - TÜM FIELD'LAR (Import Service için gerekli)
+    // 5. Duplicate check iÃ§in - TÃœM FIELD'LAR (Import Service iÃ§in gerekli)
     @Query("SELECT m FROM Music m WHERE m.user.id = :userId " +
             "AND m.title = :title " +
             "AND m.artist = :artist " +

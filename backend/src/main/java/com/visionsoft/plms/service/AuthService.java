@@ -5,13 +5,15 @@ import com.visionsoft.plms.entity.PasswordResetToken;
 import com.visionsoft.plms.entity.User;
 import com.visionsoft.plms.repository.PasswordResetTokenRepository;
 import com.visionsoft.plms.repository.UserRepository;
+import com.visionsoft.plms.util.JwtUtil;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-
 import java.time.LocalDateTime;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.Optional;
 import java.util.Random;
 
@@ -30,7 +32,10 @@ public class AuthService {
     @Autowired
     private PasswordEncoder passwordEncoder;
     
-    // Sign In
+    @Autowired
+    private JwtUtil jwtUtil; // ✅ YENİ EKLEME
+    
+    // ✅ GÜNCELLENECEK: Sign In - TOKEN EKLE
     public AuthResponse signIn(SignInRequest request) {
         Optional<User> userOpt = userRepository.findByUsername(request.getUsernameOrEmail());
         
@@ -49,10 +54,23 @@ public class AuthService {
             return new AuthResponse(false, "Invalid password");
         }
         
-        return new AuthResponse(true, "Sign in successful", user);
+        // ✅ YENİ: Token oluştur
+        String token = jwtUtil.generateToken(user.getId(), user.getUsername());
+        
+        // ✅ YENİ: Response data hazırla
+        Map<String, Object> data = new HashMap<>();
+        data.put("token", token);
+        
+        Map<String, Object> userData = new HashMap<>();
+        userData.put("id", user.getId());
+        userData.put("username", user.getUsername());
+        userData.put("email", user.getEmail());
+        data.put("user", userData);
+        
+        return new AuthResponse(true, "Sign in successful", data);
     }
     
-    // Sign Up
+    // Sign Up (DEĞİŞİKLİK YOK)
     @Transactional
     public AuthResponse signUp(SignUpRequest request) {
         // Email kontrolü
@@ -68,7 +86,6 @@ public class AuthService {
         User user = new User();
         user.setUsername(request.getUsername());
         user.setEmail(request.getEmail());
-        // Şifreyi hash'le
         user.setPassword(passwordEncoder.encode(request.getPassword()));
         user.setCreatedAt(LocalDateTime.now());
         user.setUpdatedAt(LocalDateTime.now());
@@ -78,7 +95,7 @@ public class AuthService {
         return new AuthResponse(true, "Account created successfully");
     }
     
-    // Forgot Password - Send Reset Code
+    // Forgot Password (DEĞİŞİKLİK YOK)
     @Transactional
     public AuthResponse forgotPassword(ForgotPasswordRequest request) {
         Optional<User> userOpt = userRepository.findByEmail(request.getEmail());
@@ -89,13 +106,10 @@ public class AuthService {
         
         User user = userOpt.get();
         
-        // Eski token'ları sil
         resetTokenRepository.deleteByEmail(request.getEmail());
         
-        // 6 haneli kod oluştur
         String resetCode = generateResetCode();
         
-        // Token oluştur (15 dakika geçerli)
         PasswordResetToken token = new PasswordResetToken();
         token.setUser(user);
         token.setEmail(request.getEmail());
@@ -106,7 +120,6 @@ public class AuthService {
         
         resetTokenRepository.save(token);
         
-        // Email gönder
         try {
             emailService.sendResetCode(request.getEmail(), resetCode);
         } catch (Exception e) {
@@ -116,7 +129,7 @@ public class AuthService {
         return new AuthResponse(true, "Reset code sent to your email");
     }
     
-    // Verify Reset Code
+    // Verify Reset Code (DEĞİŞİKLİK YOK)
     public AuthResponse verifyResetCode(VerifyResetCodeRequest request) {
         Optional<PasswordResetToken> tokenOpt = resetTokenRepository
             .findByEmailAndResetCodeAndIsUsedFalseAndExpiresAtAfter(
@@ -132,7 +145,7 @@ public class AuthService {
         return new AuthResponse(true, "Reset code verified");
     }
     
-    // Reset Password
+    // Reset Password (DEĞİŞİKLİK YOK)
     @Transactional
     public AuthResponse resetPassword(ResetPasswordRequest request) {
         Optional<PasswordResetToken> tokenOpt = resetTokenRepository
@@ -153,13 +166,11 @@ public class AuthService {
         }
         
         User user = userOpt.get();
-        // Şifreyi hash'le
         user.setPassword(passwordEncoder.encode(request.getNewPassword()));
         user.setUpdatedAt(LocalDateTime.now());
         
         userRepository.save(user);
         
-        // Token'ı kullanıldı olarak işaretle
         PasswordResetToken token = tokenOpt.get();
         token.setIsUsed(true);
         resetTokenRepository.save(token);
@@ -167,7 +178,7 @@ public class AuthService {
         return new AuthResponse(true, "Password reset successful");
     }
     
-    // Update Account
+    // Update Account (DEĞİŞİKLİK YOK)
     @Transactional
     public AuthResponse updateAccount(Long userId, SignUpRequest request) {
         Optional<User> userOpt = userRepository.findById(userId);
@@ -178,7 +189,6 @@ public class AuthService {
         
         User user = userOpt.get();
         
-        // Email değiştiriliyorsa, başka kullanıcı kullanıyor mu kontrol et
         if (!user.getEmail().equals(request.getEmail())) {
             if (userRepository.existsByEmail(request.getEmail())) {
                 return new AuthResponse(false, "Email already exists");
@@ -186,7 +196,6 @@ public class AuthService {
             user.setEmail(request.getEmail());
         }
         
-        // Username değiştiriliyorsa, başka kullanıcı kullanıyor mu kontrol et
         if (!user.getUsername().equals(request.getUsername())) {
             if (userRepository.existsByUsername(request.getUsername())) {
                 return new AuthResponse(false, "Username already exists");
@@ -194,7 +203,6 @@ public class AuthService {
             user.setUsername(request.getUsername());
         }
         
-        // Password güncelleme (opsiyonel)
         if (request.getPassword() != null && !request.getPassword().isEmpty()) {
             user.setPassword(passwordEncoder.encode(request.getPassword()));
         }
@@ -205,7 +213,7 @@ public class AuthService {
         return new AuthResponse(true, "Account updated successfully", user);
     }
     
-    // Delete Account
+    // Delete Account (DEĞİŞİKLİK YOK)
     @Transactional
     public AuthResponse deleteAccount(Long userId) {
         Optional<User> userOpt = userRepository.findById(userId);
@@ -219,7 +227,7 @@ public class AuthService {
         return new AuthResponse(true, "Account deleted successfully");
     }
     
-    // 6 haneli kod oluştur
+    // Helper method (DEĞİŞİKLİK YOK)
     private String generateResetCode() {
         Random random = new Random();
         int code = 100000 + random.nextInt(900000);

@@ -25,7 +25,7 @@ public class MovieService {
     private final RestTemplate restTemplate;
     private final ObjectMapper objectMapper;
 
-    // SENİN API KEY'İN
+    // SENÄ°N API KEY'Ä°N
     private static final String OMDB_API_KEY = "52794c2b";
     private static final String OMDB_URL = "http://www.omdbapi.com/?apikey=" + OMDB_API_KEY;
 
@@ -38,23 +38,23 @@ public class MovieService {
 
     private User getUserById(Long userId) {
         return userRepository.findById(userId)
-                .orElseThrow(() -> new RuntimeException("HATA: ID'si " + userId + " olan kullanıcı bulunamadı!"));
+                .orElseThrow(() -> new RuntimeException("HATA: ID'si " + userId + " olan kullanÄ±cÄ± bulunamadÄ±!"));
     }
 
     // --- AKILLI EKLEME METODU ---
     public Movie addMovie(AddMovieRequest request, Long userId) {
 
-        // DURUM 1: Kullanıcı IMDb ID girmiş (Direkt nokta atışı)
+        // DURUM 1: KullanÄ±cÄ± IMDb ID girmiÅŸ (Direkt nokta atÄ±ÅŸÄ±)
         if (request.getImdbId() != null && !request.getImdbId().isEmpty()) {
-            // --- GÜNCELLENDİ: Favorite bilgisini parametre olarak geçiyoruz ---
+            // --- GÃœNCELLENDÄ°: Favorite bilgisini parametre olarak geÃ§iyoruz ---
             return saveMovieByImdbId(request.getImdbId(), userId, request.getFavorite());
         }
 
-        // DURUM 2: Kullanıcı İsim Girmiş (Arama Yapacağız)
+        // DURUM 2: KullanÄ±cÄ± Ä°sim GirmiÅŸ (Arama YapacaÄŸÄ±z)
         else {
             User currentUser = getUserById(userId);
 
-            // A. Veritabanı Kontrolü
+            // A. VeritabanÄ± KontrolÃ¼
             List<Movie> existing;
             if (request.getDirector() != null && !request.getDirector().isEmpty()) {
                 existing = movieRepository.findByUserIdAndTitleAndDirector(
@@ -83,7 +83,7 @@ public class MovieService {
                     foundInApi = fetchAndMapDetails(imdbID, movieToSave);
                 }
             } catch (Exception e) {
-                System.out.println("OMDb API Hatası (Manuel devam): " + e.getMessage());
+                System.out.println("OMDb API HatasÄ± (Manuel devam): " + e.getMessage());
             }
 
             // C. Eksikleri Tamamla ve Kaydet
@@ -91,7 +91,7 @@ public class MovieService {
             movieToSave.setType(ItemType.MOVIE);
             movieToSave.setStatus(ItemStatus.WISHLIST);
 
-            // --- YENİ: FAVORİ DURUMUNU KAYDET ---
+            // --- YENÄ°: FAVORÄ° DURUMUNU KAYDET ---
             movieToSave.setFavorite(request.getFavorite() != null ? request.getFavorite() : false);
 
             if (!foundInApi || movieToSave.getTitle() == null) movieToSave.setTitle(request.getTitle());
@@ -103,7 +103,7 @@ public class MovieService {
             if (movieToSave.getReleaseYear() == null) movieToSave.setReleaseYear(request.getReleaseYear());
             if (movieToSave.getGenre() == null) movieToSave.setGenre(request.getGenre());
 
-            // --- GÜVENLİK KİLİDİ ---
+            // --- GÃœVENLÄ°K KÄ°LÄ°DÄ° ---
             if (movieToSave.getImdbId() != null) {
                 Optional<Movie> duplicateCheck = movieRepository.findByImdbIdAndUser(movieToSave.getImdbId(), currentUser);
                 if (duplicateCheck.isPresent()) return duplicateCheck.get();
@@ -118,8 +118,8 @@ public class MovieService {
         }
     }
 
-    // --- SADECE IMDB ID İLE KAYDETME ---
-    // --- GÜNCELLENDİ: Boolean isFavorite parametresi eklendi ---
+    // --- SADECE IMDB ID Ä°LE KAYDETME ---
+    // --- GÃœNCELLENDÄ°: Boolean isFavorite parametresi eklendi ---
     public Movie saveMovieByImdbId(String imdbId, Long userId, Boolean isFavorite) {
         User currentUser = getUserById(userId);
 
@@ -131,13 +131,13 @@ public class MovieService {
         movie.setType(ItemType.MOVIE);
         movie.setStatus(ItemStatus.WISHLIST);
 
-        // --- YENİ: Favori Set Etme ---
+        // --- YENÄ°: Favori Set Etme ---
         movie.setFavorite(isFavorite != null ? isFavorite : false);
 
-        // Detayları çek
+        // DetaylarÄ± Ã§ek
         boolean success = fetchAndMapDetails(imdbId, movie);
         if (!success) {
-            throw new RuntimeException("OMDb API'de bu ID ile film bulunamadı: " + imdbId);
+            throw new RuntimeException("OMDb API'de bu ID ile film bulunamadÄ±: " + imdbId);
         }
 
         return movieRepository.save(movie);
@@ -181,7 +181,7 @@ public class MovieService {
             if (!"N/A".equals(rating)) movie.setImdbScore(Double.parseDouble(rating));
 
             String plot = root.path("Plot").asText();
-            movie.setDescription("N/A".equals(plot) ? "Açıklama yok." : plot);
+            movie.setDescription("N/A".equals(plot) ? "AÃ§Ä±klama yok." : plot);
 
             String poster = root.path("Poster").asText();
             if (!"N/A".equals(poster)) movie.setImageUrl(poster);
@@ -201,14 +201,14 @@ public class MovieService {
         }
     }
 
-    // --- 2. SİLME METODU (DELETE) ---
+    // --- 2. SÄ°LME METODU (DELETE) ---
     public void deleteMovie(Long id, Long userId) {
         // Filmi bul
         Movie movie = movieRepository.findById(id)
                 .orElseThrow(() -> new org.springframework.web.server.ResponseStatusException(
-                        org.springframework.http.HttpStatus.NOT_FOUND, "Film bulunamadı (ID: " + id + ")"));
+                        org.springframework.http.HttpStatus.NOT_FOUND, "Film bulunamadÄ± (ID: " + id + ")"));
 
-        // Yetki Kontrolü
+        // Yetki KontrolÃ¼
         if (!movie.getUser().getId().equals(userId)) {
             throw new org.springframework.web.server.ResponseStatusException(
                     org.springframework.http.HttpStatus.FORBIDDEN, "Bu filmi silme yetkiniz yok!");
@@ -218,30 +218,30 @@ public class MovieService {
         movieRepository.delete(movie);
     }
 
-    // --- 3. GÜNCELLEME METODU (UPDATE) ---
+    // --- 3. GÃœNCELLEME METODU (UPDATE) ---
     public Movie updateMovie(Long id, UpdateMovieRequest request, Long userId) {
         // Filmi bul
         Movie movie = movieRepository.findById(id)
                 .orElseThrow(() -> new org.springframework.web.server.ResponseStatusException(
-                        org.springframework.http.HttpStatus.NOT_FOUND, "Film bulunamadı (ID: " + id + ")"));
+                        org.springframework.http.HttpStatus.NOT_FOUND, "Film bulunamadÄ± (ID: " + id + ")"));
 
-        // Yetki Kontrolü
+        // Yetki KontrolÃ¼
         if (!movie.getUser().getId().equals(userId)) {
             throw new org.springframework.web.server.ResponseStatusException(
-                    org.springframework.http.HttpStatus.FORBIDDEN, "Bu filmi güncelleme yetkiniz yok!");
+                    org.springframework.http.HttpStatus.FORBIDDEN, "Bu filmi gÃ¼ncelleme yetkiniz yok!");
         }
 
-        // --- Ortak Alanları Güncelle (Varsa) ---
+        // --- Ortak AlanlarÄ± GÃ¼ncelle (Varsa) ---
         if (request.getTitle() != null) movie.setTitle(request.getTitle());
         if (request.getDescription() != null) movie.setDescription(request.getDescription());
         if (request.getFavorite() != null) movie.setFavorite(request.getFavorite());
         if (request.getStatus() != null) movie.setStatus(request.getStatus());
         if (request.getImageUrl() != null) movie.setImageUrl(request.getImageUrl());
 
-        // Rating dönüşümü (Double -> Integer)
+        // Rating dÃ¶nÃ¼ÅŸÃ¼mÃ¼ (Double -> Integer)
         if (request.getRating() != null) movie.setRating(request.getRating().intValue());
 
-        // --- Filme Özel Alanları Güncelle ---
+        // --- Filme Ã–zel AlanlarÄ± GÃ¼ncelle ---
         if (request.getDirector() != null) movie.setDirector(request.getDirector());
         if (request.getDurationMinutes() != null) movie.setDurationMinutes(request.getDurationMinutes());
         if (request.getReleaseYear() != null) movie.setReleaseYear(request.getReleaseYear());

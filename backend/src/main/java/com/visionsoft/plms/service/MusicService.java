@@ -40,14 +40,14 @@ public class MusicService {
 
     private User getUserById(Long userId) {
         return userRepository.findById(userId)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Kullanıcı bulunamadı"));
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "KullanÄ±cÄ± bulunamadÄ±"));
     }
 
     // --- 1. EKLEME (ADD) ---
     public Music addMusic(AddMusicRequest request, Long userId) {
         User currentUser = getUserById(userId);
 
-        // A. Veritabanı Kontrolü (Duplicate Check)
+        // A. VeritabanÄ± KontrolÃ¼ (Duplicate Check)
         List<Music> existing;
         if (request.getArtist() != null && !request.getArtist().isEmpty()) {
             existing = musicRepository.findByUserIdAndTitleAndArtist(userId, request.getTitle(), request.getArtist());
@@ -56,12 +56,12 @@ public class MusicService {
         }
         if (!existing.isEmpty()) return existing.get(0);
 
-        // B. Last.fm API Araması
+        // B. Last.fm API AramasÄ±
         Music musicToSave = new Music();
         boolean foundInApi = false;
 
         try {
-            // İsim + Artist araması yap
+            // Ä°sim + Artist aramasÄ± yap
             String searchUrl = BASE_URL + "?method=track.search&track=" + request.getTitle().replace(" ", "+") +
                     "&api_key=" + API_KEY + "&format=json";
 
@@ -74,18 +74,18 @@ public class MusicService {
             JsonNode trackMatches = root.path("results").path("trackmatches").path("track");
 
             if (trackMatches.isArray() && trackMatches.size() > 0) {
-                // En iyi eşleşmeyi bul
+                // En iyi eÅŸleÅŸmeyi bul
                 JsonNode bestMatch = trackMatches.get(0);
                 String trackName = bestMatch.path("name").asText();
                 String artistName = bestMatch.path("artist").asText();
                 String mbid = bestMatch.path("mbid").asText();
 
-                // 2. Adım: Detayları Çek (track.getInfo) - Çünkü search sonucu duration veya genre vermez
+                // 2. AdÄ±m: DetaylarÄ± Ã‡ek (track.getInfo) - Ã‡Ã¼nkÃ¼ search sonucu duration veya genre vermez
                 foundInApi = fetchAndMapDetails(trackName, artistName, mbid, musicToSave);
             }
 
         } catch (Exception e) {
-            System.out.println("Last.fm API Hatası (Manuel devam): " + e.getMessage());
+            System.out.println("Last.fm API HatasÄ± (Manuel devam): " + e.getMessage());
         }
 
         // C. Eksikleri Tamamla
@@ -103,9 +103,9 @@ public class MusicService {
 
         if (request.getAlbum() != null) musicToSave.setAlbum(request.getAlbum());
         if (request.getReleaseYear() != null) musicToSave.setReleaseYear(request.getReleaseYear());
-        if (request.getGenre() != null) musicToSave.setGenre(request.getGenre()); // API bulamadıysa user'ınkini al
+        if (request.getGenre() != null) musicToSave.setGenre(request.getGenre()); // API bulamadÄ±ysa user'Ä±nkini al
 
-        // Güvenlik Kilidi (MBID varsa)
+        // GÃ¼venlik Kilidi (MBID varsa)
         if (musicToSave.getMbid() != null && !musicToSave.getMbid().isEmpty()) {
             Optional<Music> duplicate = musicRepository.findByMbidAndUser(musicToSave.getMbid(), currentUser);
             if (duplicate.isPresent()) return duplicate.get();
@@ -114,24 +114,24 @@ public class MusicService {
         return musicRepository.save(musicToSave);
     }
 
-    // --- 2. SİLME (DELETE) ---
+    // --- 2. SÄ°LME (DELETE) ---
     public void deleteMusic(Long id, Long userId) {
         Music music = musicRepository.findById(id)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Müzik bulunamadı"));
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "MÃ¼zik bulunamadÄ±"));
 
         if (!music.getUser().getId().equals(userId)) {
-            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Bu müziği silme yetkiniz yok");
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Bu mÃ¼ziÄŸi silme yetkiniz yok");
         }
         musicRepository.delete(music);
     }
 
-    // --- 3. GÜNCELLEME (UPDATE) ---
+    // --- 3. GÃœNCELLEME (UPDATE) ---
     public Music updateMusic(Long id, UpdateMusicRequest request, Long userId) {
         Music music = musicRepository.findById(id)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Müzik bulunamadı"));
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "MÃ¼zik bulunamadÄ±"));
 
         if (!music.getUser().getId().equals(userId)) {
-            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Bu müziği güncelleme yetkiniz yok");
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Bu mÃ¼ziÄŸi gÃ¼ncelleme yetkiniz yok");
         }
 
         // Ortak
@@ -142,7 +142,7 @@ public class MusicService {
         if (request.getRating() != null) music.setRating(request.getRating().intValue());
         if (request.getImageUrl() != null) music.setImageUrl(request.getImageUrl());
 
-        // Özel
+        // Ã–zel
         if (request.getArtist() != null) music.setArtist(request.getArtist());
         if (request.getAlbum() != null) music.setAlbum(request.getAlbum());
         if (request.getGenre() != null) music.setGenre(request.getGenre());
@@ -152,7 +152,7 @@ public class MusicService {
         return musicRepository.save(music);
     }
 
-    // --- YARDIMCI METOD: Detay Çekme ---
+    // --- YARDIMCI METOD: Detay Ã‡ekme ---
     private boolean fetchAndMapDetails(String track, String artist, String mbid, Music music) {
         try {
             String detailUrl = BASE_URL + "?method=track.getInfo&api_key=" + API_KEY + "&format=json" +
@@ -170,12 +170,12 @@ public class MusicService {
 
             if (mbid != null && !mbid.isEmpty()) music.setMbid(mbid);
 
-            // Albüm Bilgisi
+            // AlbÃ¼m Bilgisi
             JsonNode albumNode = trackNode.path("album");
             if (!albumNode.isMissingNode()) {
                 music.setAlbum(albumNode.path("title").asText());
 
-                // Resim (large veya extralarge alalım)
+                // Resim (large veya extralarge alalÄ±m)
                 JsonNode images = albumNode.path("image");
                 if (images.isArray()) {
                     for (JsonNode img : images) {
@@ -187,7 +187,7 @@ public class MusicService {
                 }
             }
 
-            // Süre (API milisaniye döner -> saniyeye çevir)
+            // SÃ¼re (API milisaniye dÃ¶ner -> saniyeye Ã§evir)
             String durationMs = trackNode.path("duration").asText();
             if (durationMs != null && !durationMs.equals("0")) {
                 music.setDurationSeconds(Integer.parseInt(durationMs) / 1000);

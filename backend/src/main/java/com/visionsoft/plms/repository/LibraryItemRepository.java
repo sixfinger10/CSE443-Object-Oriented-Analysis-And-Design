@@ -8,12 +8,7 @@ import java.util.List;
 
 @Repository
 public interface LibraryItemRepository extends JpaRepository<LibraryItem, Long> {
-
-    // Toplam öğe sayısı (Kitap + Film + Müzik + Dizi)
-    Long countByUserId(Long userId);
-
-    // Toplam Favori sayısı
-    Long countByUserIdAndFavorite(Long userId, boolean favorite);
-
     List<LibraryItem> findByUserId(Long userId);
+    Long countByUserId(Long userId);
+    Long countByUserIdAndFavorite(Long userId, boolean favorite);
 }

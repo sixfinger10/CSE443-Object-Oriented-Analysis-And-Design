@@ -36,12 +36,13 @@ public class BookService {
                 .orElseThrow(() -> new RuntimeException("HATA: ID'si " + userId + " olan kullanıcı bulunamadı!"));
     }
 
+    // ==================== CREATE ====================
+
     // --- AKILLI EKLEME METODU ---
     public Book addBook(AddBookRequest request, Long userId) {
 
         // DURUM 1: Kullanıcı ISBN girmiş
         if (request.getIsbn() != null && !request.getIsbn().isEmpty()) {
-            // --- GÜNCELLENDİ: Favorite bilgisini de gönderiyoruz ---
             return saveBookByIsbn(request.getIsbn(), userId, request.getFavorite());
         }
 
@@ -67,14 +68,12 @@ public class BookService {
                     searchQuery += "+inauthor:" + request.getAuthor().replace(" ", "+");
                 }
 
-                // maxResults=20 yaptık ki seçme havuzumuz geniş olsun
                 String url = "https://www.googleapis.com/books/v1/volumes?q=" + searchQuery + "&maxResults=20";
                 String jsonResponse = restTemplate.getForObject(url, String.class);
                 JsonNode root = objectMapper.readTree(jsonResponse);
 
                 if (root.path("totalItems").asInt() > 0) {
 
-                    // --- EN İYİ KİTABI SEÇEN ALGORİTMAYI ÇAĞIRIYORUZ ---
                     JsonNode bestItem = findBestMatch(root.path("items"));
                     JsonNode volumeInfo = bestItem.path("volumeInfo");
 
@@ -108,7 +107,6 @@ public class BookService {
                     if (volumeInfo.has("publisher")) bookToSave.setPublisher(volumeInfo.path("publisher").asText());
                     if (volumeInfo.has("categories")) bookToSave.setGenre(volumeInfo.path("categories").get(0).asText());
 
-                    // Açıklama Karakter Sınırı (DB patlamasın diye)
                     if (volumeInfo.has("description")) {
                         String desc = volumeInfo.path("description").asText();
                         bookToSave.setDescription(desc.length() > 2000 ? desc.substring(0, 1995) + "..." : desc);
@@ -131,8 +129,6 @@ public class BookService {
             bookToSave.setUser(currentUser);
             bookToSave.setType(ItemType.BOOK);
             bookToSave.setStatus(ItemStatus.WISHLIST);
-
-            // --- YENİ EKLENEN: Favorite Durumu ---
             bookToSave.setFavorite(request.getFavorite() != null ? request.getFavorite() : false);
 
             // Google bulamadıysa kullanıcının girdiklerini kullan
@@ -150,7 +146,7 @@ public class BookService {
             if (request.getPageCount() != null) bookToSave.setPageCount(request.getPageCount());
             if (request.getGenre() != null) bookToSave.setGenre(request.getGenre());
 
-            // --- GÜVENLİK KİLİDİ (SON KONTROL) ---
+            // Güvenlik Kilidi
             if (bookToSave.getIsbn() != null) {
                 Optional<Book> duplicateIsbnCheck = bookRepository.findByIsbnAndUser(bookToSave.getIsbn(), currentUser);
                 if (duplicateIsbnCheck.isPresent()) {
@@ -162,9 +158,9 @@ public class BookService {
         }
     }
 
-    // --- EN İYİ KİTABI SEÇME ALGORİTMASI (Weighted Scoring) ---
+    // --- EN İYİ KİTABI SEÇME ALGORİTMASI ---
     private JsonNode findBestMatch(JsonNode items) {
-        JsonNode bestItem = items.get(0); // Varsayılan ilk kayıt
+        JsonNode bestItem = items.get(0);
         int maxScore = -1;
 
         Iterator<JsonNode> elements = items.elements();
@@ -216,8 +212,7 @@ public class BookService {
         return bestItem;
     }
 
-    // --- SADECE ISBN İLE EKLEME (API) ---
-    // --- GÜNCELLENDİ: Boolean isFavorite parametresi eklendi ---
+    // --- SADECE ISBN İLE EKLEME ---
     public Book saveBookByIsbn(String isbn, Long userId, Boolean isFavorite) {
         User currentUser = getUserById(userId);
 
@@ -240,8 +235,6 @@ public class BookService {
             book.setUser(currentUser);
             book.setType(ItemType.BOOK);
             book.setStatus(ItemStatus.WISHLIST);
-
-            // --- YENİ EKLENEN: Favorite Durumu ---
             book.setFavorite(isFavorite != null ? isFavorite : false);
 
             book.setIsbn(isbn);
@@ -277,49 +270,169 @@ public class BookService {
         }
     }
 
-    // --- SİLME METODU ---
-    public void deleteBook(Long bookId, Long userId) {
-        // 1. Kitabı bul, yoksa hata ver
-        Book book = bookRepository.findById(bookId)
-                .orElseThrow(() -> new RuntimeException("Silinecek kitap bulunamadı (ID: " + bookId + ")"));
+    // ==================== UPDATE ====================
 
-        // 2. Güvenlik Kontrolü: Bu kitap gerçekten silmek isteyen kullanıcıya mı ait?
-        if (!book.getUser().getId().equals(userId)) {
-            throw new RuntimeException("HATA: Bu kitabı silme yetkiniz yok! Sadece kendi kitaplarınızı silebilirsiniz.");
-        }
-
-        // 3. Silme İşlemi
-        bookRepository.delete(book);
-    }
-
-    // --- GÜNCELLEME METODU ---
+    // --- ✅ GÜNCELLEME METODU (İYİLEŞTİRİLMİŞ) ---
     public Book updateBook(Long bookId, UpdateBookRequest request, Long userId) {
+        System.out.println("===========================================");
+        System.out.println("DEBUG: updateBook called for ID: " + bookId);
+        System.out.println("DEBUG: User ID: " + userId);
+        System.out.println("DEBUG: Request data: " + request);
+
         // 1. Kitabı bul
         Book book = bookRepository.findById(bookId)
                 .orElseThrow(() -> new RuntimeException("Kitap bulunamadı (ID: " + bookId + ")"));
 
+        System.out.println("DEBUG: Found book - Title: " + book.getTitle());
+        System.out.println("DEBUG: Book owner ID: " + book.getUser().getId());
+
         // 2. Yetki Kontrolü (Sadece sahibi güncelleyebilir)
         if (!book.getUser().getId().equals(userId)) {
+            System.err.println("ERROR: User " + userId + " tried to update book owned by " + book.getUser().getId());
             throw new RuntimeException("Bu kitabı güncelleme yetkiniz yok!");
         }
 
         // 3. Güncelleme (Sadece dolu gelen alanları değiştir)
 
-        // --- Ortak Alanlar ---
-        if (request.getTitle() != null) book.setTitle(request.getTitle());
-        if (request.getDescription() != null) book.setDescription(request.getDescription());
-        if (request.getFavorite() != null) book.setFavorite(request.getFavorite());
-        if (request.getStatus() != null) book.setStatus(request.getStatus());
-        // .intValue() ekleyerek Double'ı Integer'a çeviriyoruz
-        if (request.getRating() != null) book.setRating(request.getRating().intValue());
-        if (request.getImageUrl() != null) book.setImageUrl(request.getImageUrl());
+        // Ortak Alanlar
+        if (request.getTitle() != null) {
+            System.out.println("DEBUG: Updating title: " + book.getTitle() + " → " + request.getTitle());
+            book.setTitle(request.getTitle());
+        }
+        if (request.getDescription() != null) {
+            System.out.println("DEBUG: Updating description");
+            book.setDescription(request.getDescription());
+        }
+        if (request.getFavorite() != null) {
+            System.out.println("DEBUG: Updating favorite: " + book.isFavorite() + " → " + request.getFavorite());
+            book.setFavorite(request.getFavorite());
+        }
+        if (request.getStatus() != null) {
+            System.out.println("DEBUG: Updating status: " + book.getStatus() + " → " + request.getStatus());
+            book.setStatus(request.getStatus());
+        }
+        if (request.getRating() != null) {
+            System.out.println("DEBUG: Updating rating: " + book.getRating() + " → " + request.getRating().intValue());
+            book.setRating(request.getRating().intValue());
+        }
+        if (request.getImageUrl() != null) {
+            book.setImageUrl(request.getImageUrl());
+        }
 
-        // --- Kitaba Özel Alanlar ---
-        if (request.getAuthor() != null) book.setAuthor(request.getAuthor());
-        if (request.getPublisher() != null) book.setPublisher(request.getPublisher());
-        if (request.getPageCount() != null) book.setPageCount(request.getPageCount());
+        // Kitaba Özel Alanlar
+        if (request.getAuthor() != null) {
+            System.out.println("DEBUG: Updating author: " + book.getAuthor() + " → " + request.getAuthor());
+            book.setAuthor(request.getAuthor());
+        }
+        if (request.getPublisher() != null) {
+            System.out.println("DEBUG: Updating publisher: " + book.getPublisher() + " → " + request.getPublisher());
+            book.setPublisher(request.getPublisher());
+        }
+        if (request.getPageCount() != null) {
+            System.out.println("DEBUG: Updating page count: " + book.getPageCount() + " → " + request.getPageCount());
+            book.setPageCount(request.getPageCount());
+        }
+
+        // ✅ YENİ FIELD'LAR
+        if (request.getPublicationYear() != null) {
+            System.out.println("DEBUG: Updating publication year: " + book.getPublicationYear() + " → " + request.getPublicationYear());
+            book.setPublicationYear(request.getPublicationYear());
+        }
+        if (request.getGenre() != null) {
+            System.out.println("DEBUG: Updating genre: " + book.getGenre() + " → " + request.getGenre());
+            book.setGenre(request.getGenre());
+        }
+        if (request.getIsbn() != null) {
+            System.out.println("DEBUG: Updating ISBN: " + book.getIsbn() + " → " + request.getIsbn());
+            book.setIsbn(request.getIsbn());
+        }
+        if (request.getLanguage() != null) {
+            System.out.println("DEBUG: Updating language: " + book.getLanguage() + " → " + request.getLanguage());
+            book.setLanguage(request.getLanguage());
+        }
 
         // 4. Kaydet ve Döndür
-        return bookRepository.save(book);
+        Book savedBook = bookRepository.save(book);
+
+        System.out.println("SUCCESS: Book updated - ID: " + savedBook.getId());
+        System.out.println("SUCCESS: New title: " + savedBook.getTitle());
+        System.out.println("SUCCESS: New favorite: " + savedBook.isFavorite());
+        System.out.println("===========================================");
+
+        return savedBook;
+    }
+
+    // ==================== UPDATE STATUS ====================
+
+    // --- ✅ STATUS GÜNCELLEME METODU ---
+    public Book updateBookStatus(Long bookId, ItemStatus newStatus, Long userId) {
+        System.out.println("===========================================");
+        System.out.println("DEBUG: updateBookStatus called for ID: " + bookId);
+        System.out.println("DEBUG: New status: " + newStatus);
+        System.out.println("DEBUG: User ID: " + userId);
+
+        // 1. Kitabı bul
+        Book book = bookRepository.findById(bookId)
+                .orElseThrow(() -> new RuntimeException("Kitap bulunamadı (ID: " + bookId + ")"));
+
+        System.out.println("DEBUG: Found book - Title: " + book.getTitle());
+        System.out.println("DEBUG: Current status: " + book.getStatus());
+
+        // 2. Yetki Kontrolü
+        if (!book.getUser().getId().equals(userId)) {
+            System.err.println("ERROR: User " + userId + " tried to update book owned by " + book.getUser().getId());
+            throw new RuntimeException("Bu kitabın statusunu güncelleme yetkiniz yok!");
+        }
+
+        // 3. Status Güncelle
+        book.setStatus(newStatus);
+
+        // 4. Otomatik mantık (opsiyonel):
+        // IN_PROGRESS yapıldığında currentPage başlat
+        if (newStatus == ItemStatus.IN_PROGRESS && book.getCurrentPage() == null) {
+            book.setCurrentPage(1);
+            System.out.println("DEBUG: Auto-setting currentPage to 1 (started reading)");
+        }
+
+        // COMPLETED yapıldığında currentPage = totalPage yap
+        if (newStatus == ItemStatus.COMPLETED && book.getPageCount() != null) {
+            book.setCurrentPage(book.getPageCount());
+            System.out.println("DEBUG: Auto-setting currentPage to " + book.getPageCount() + " (completed)");
+        }
+
+        // 5. Kaydet
+        Book savedBook = bookRepository.save(book);
+
+        System.out.println("SUCCESS: Status updated - ID: " + savedBook.getId());
+        System.out.println("SUCCESS: New status: " + savedBook.getStatus());
+        System.out.println("===========================================");
+
+        return savedBook;
+    }
+
+    // ==================== DELETE ====================
+
+    // --- ✅ SİLME METODU ---
+    public void deleteBook(Long bookId, Long userId) {
+        System.out.println("===========================================");
+        System.out.println("DEBUG: deleteBook called for ID: " + bookId);
+
+        // 1. Kitabı bul
+        Book book = bookRepository.findById(bookId)
+                .orElseThrow(() -> new RuntimeException("Silinecek kitap bulunamadı (ID: " + bookId + ")"));
+
+        System.out.println("DEBUG: Found book - Title: " + book.getTitle());
+
+        // 2. Güvenlik Kontrolü
+        if (!book.getUser().getId().equals(userId)) {
+            System.err.println("ERROR: User " + userId + " tried to delete book owned by " + book.getUser().getId());
+            throw new RuntimeException("HATA: Bu kitabı silme yetkiniz yok!");
+        }
+
+        // 3. Silme İşlemi
+        bookRepository.delete(book);
+
+        System.out.println("SUCCESS: Book deleted - ID: " + bookId);
+        System.out.println("===========================================");
     }
 }

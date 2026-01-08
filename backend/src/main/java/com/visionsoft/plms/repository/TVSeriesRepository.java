@@ -13,27 +13,24 @@ import java.util.Optional;
 @Repository
 public interface TVSeriesRepository extends JpaRepository<TVSeries, Long> {
 
-    // --- YENİ EKLENEN: User ID'ye göre liste ---
-    List<TVSeries> findByUserId(Long userId);
-
-    // 1. API Kontrolü: IMDb ID varsa duplicate olmasın
+    // 1. API KontrolÃ¼: IMDb ID varsa duplicate olmasÄ±n
     Optional<TVSeries> findByImdbIdAndUser(String imdbId, User user);
 
-    // 2. Manuel/Fallback Kontrolü: Sadece İsimle Kontrol
+    // 2. Manuel/Fallback KontrolÃ¼: Sadece Ä°simle Kontrol
     @Query("SELECT t FROM TVSeries t WHERE t.user.id = :userId AND t.title = :title")
     List<TVSeries> findByUserIdAndTitle(@Param("userId") Long userId, @Param("title") String title);
 
-    // 3. Detaylı Manuel Kontrol (İsim + Creator)
+    // 3. DetaylÄ± Manuel Kontrol (Ä°sim + Creator)
     @Query("SELECT t FROM TVSeries t WHERE t.user.id = :userId AND t.title = :title AND t.creator = :creator")
     List<TVSeries> findByUserIdAndTitleAndCreator(@Param("userId") Long userId,
                                                   @Param("title") String title,
                                                   @Param("creator") String creator);
 
-    // Dashboard için sayaç
+    // Dashboard iÃ§in sayaÃ§
     @Query("SELECT COUNT(t) FROM TVSeries t WHERE t.user.id = :userId")
     Long countByUserId(@Param("userId") Long userId);
 
-    // --- IMPORT SERVICE İÇİN GEREKLİ: Tam Eşleşme Kontrolü ---
+    // --- IMPORT SERVICE Ä°Ã‡Ä°N GEREKLÄ°: Tam EÅŸleÅŸme KontrolÃ¼ ---
     @Query("SELECT t FROM TVSeries t WHERE t.user.id = :userId " +
             "AND t.title = :title " +
             "AND t.creator = :creator " +

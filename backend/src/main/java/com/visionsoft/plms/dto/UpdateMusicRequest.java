@@ -13,7 +13,7 @@ public class UpdateMusicRequest {
     private Double rating;
     private String imageUrl;
 
-    // Music Özel
+    // Music Ã–zel
     private String artist;
     private String album;
     private String genre;

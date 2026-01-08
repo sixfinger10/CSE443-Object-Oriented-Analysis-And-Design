@@ -5,17 +5,20 @@ import lombok.Data;
 
 @Data
 public class UpdateBookRequest {
-    // Ortak Alanlar (LibraryItem)
+    // Ortak Alanlar (Tüm Item tipleri için)
     private String title;
     private String description;
     private Boolean favorite;
-    private ItemStatus status; // (Okuyorum, Bitti, İstek Listesi vb.)
-    private Double rating;     // Kullanıcının verdiği puan (Varsa)
-    private String imageUrl;   // Kullanıcı belki kendi resmini yükler
+    private ItemStatus status;
+    private Double rating;
+    private String imageUrl;
 
     // Kitaba Özel Alanlar
     private String author;
     private String publisher;
     private Integer pageCount;
-    // ISBN genelde güncellenmez ama çok istersen ekleyebilirsin, şimdilik gerek yok.
+    private Integer publicationYear;  // ✅ YENİ - Frontend gönderiyordu
+    private String genre;             // ✅ YENİ - Frontend gönderiyordu
+    private String isbn;              // ✅ YENİ - Edit'te ISBN değişebilir
+    private String language;          // ✅ YENİ - Dil bilgisi (opsiyonel)
 }

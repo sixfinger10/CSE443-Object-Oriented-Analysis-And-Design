@@ -18,8 +18,8 @@ public class TVSeries extends LibraryItem {
     private Integer seasonCount; // API'deki "totalSeasons"
     private Integer episodeCount;// API vermezse manuel girilebilir
     private String network;      // HBO, Netflix vb. (Manuel)
-    private Integer startYear;   // "2011–2019" -> 2011
-    private Integer endYear;     // "2011–2019" -> 2019 (Devam ediyorsa null)
+    private Integer startYear;   // "2011â€“2019" -> 2011
+    private Integer endYear;     // "2011â€“2019" -> 2019 (Devam ediyorsa null)
 
     // OMDb Uyumlu Yeni Alanlar
     private String imdbId;

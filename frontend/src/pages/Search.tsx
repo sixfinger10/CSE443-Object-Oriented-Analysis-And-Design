@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import ItemDetailModal from '../components/ItemDetailModal';
+import libraryService from '../services/library.service';
 import './Search.css';
 
 interface LibraryItem {
@@ -9,6 +10,7 @@ interface LibraryItem {
   author?: string;
   director?: string;
   artist?: string;
+  creator?: string;
   year?: number;
   rating: number;
   isFavorite: boolean;
@@ -29,74 +31,121 @@ interface Filter {
   id: string;
   label: string;
   type: 'genre' | 'year' | 'type';
+  value: string;
 }
 
 const Search = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedItem, setSelectedItem] = useState<LibraryItem | null>(null);
-  const [activeFilters, setActiveFilters] = useState<Filter[]>([
-    { id: '1', label: 'Genre: Sci-Fi', type: 'genre' },
-    { id: '2', label: 'Year: 2008-2020', type: 'year' },
-  ]);
+  const [activeFilters, setActiveFilters] = useState<Filter[]>([]);
+  const [allItems, setAllItems] = useState<LibraryItem[]>([]);
+  const [searchResults, setSearchResults] = useState<LibraryItem[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-  // Dummy data - gerçekte backend'den gelecek
-  const [allItems] = useState<LibraryItem[]>([
-    { 
-      id: 1, 
-      type: 'Movie', 
-      title: 'Inception', 
-      director: 'Christopher Nolan', 
-      year: 2010, 
-      rating: 5, 
-      isFavorite: false, 
-      icon: '🎥',
-      genre: 'Sci-Fi',
-      duration: 148,
-      notes: 'Mind-bending thriller!'
-    },
-    { 
-      id: 2, 
-      type: 'Movie', 
-      title: 'The Dark Knight', 
-      director: 'Christopher Nolan', 
-      year: 2008, 
-      rating: 5, 
-      isFavorite: false, 
-      icon: '🎥',
-      genre: 'Action',
-      duration: 152
-    },
-    { 
-      id: 3, 
-      type: 'Movie', 
-      title: 'Interstellar', 
-      director: 'Christopher Nolan', 
-      year: 2014, 
-      rating: 5, 
-      isFavorite: true, 
-      icon: '🎥',
-      genre: 'Sci-Fi',
-      duration: 169
-    },
-  ]);
-
-  const [searchResults, setSearchResults] = useState<LibraryItem[]>(allItems);
-
+  // Load all items from backend
   useEffect(() => {
-    // Search ve filter logic - gerçekte backend'de olacak
-    let filtered = allItems;
+    loadAllItems();
+  }, []);
 
-    if (searchQuery) {
+  const loadAllItems = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+
+      console.log('Loading all items from backend...');
+
+      // Fetch all items from backend
+      const [books, movies, series, music] = await Promise.all([
+        libraryService.getAllBooks().catch(() => []),
+        libraryService.getAllMovies().catch(() => []),
+        libraryService.getAllTVSeries().catch(() => []),
+        libraryService.getAllMusic().catch(() => [])
+      ]);
+
+      console.log('Books:', books);
+      console.log('Movies:', movies);
+      console.log('Series:', series);
+      console.log('Music:', music);
+
+      // Map all items to LibraryItem format
+      const items: LibraryItem[] = [
+        ...books.map((item: any) => ({
+          ...item,
+          type: 'Book' as const,
+          icon: '📖',
+          isFavorite: item.favorite || false
+        })),
+        ...movies.map((item: any) => ({
+          ...item,
+          type: 'Movie' as const,
+          icon: '🎥',
+          isFavorite: item.favorite || false
+        })),
+        ...series.map((item: any) => ({
+          ...item,
+          type: 'TV Series' as const,
+          icon: '📺',
+          isFavorite: item.favorite || false
+        })),
+        ...music.map((item: any) => ({
+          ...item,
+          type: 'Music' as const,
+          icon: '🎵',
+          isFavorite: item.favorite || false
+        }))
+      ];
+
+      console.log('All items loaded:', items.length);
+      setAllItems(items);
+      setSearchResults(items); // Initially show all items
+
+    } catch (err: any) {
+      console.error('Error loading items:', err);
+      setError(err.message || 'Failed to load items');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Search and filter logic
+  useEffect(() => {
+    let filtered = [...allItems];
+
+    // Apply search query
+    if (searchQuery.trim()) {
+      const query = searchQuery.toLowerCase();
       filtered = filtered.filter(item =>
-        item.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        item.director?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        item.author?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        item.artist?.toLowerCase().includes(searchQuery.toLowerCase())
+        item.title.toLowerCase().includes(query) ||
+        item.author?.toLowerCase().includes(query) ||
+        item.director?.toLowerCase().includes(query) ||
+        item.artist?.toLowerCase().includes(query) ||
+        item.creator?.toLowerCase().includes(query) ||
+        item.genre?.toLowerCase().includes(query)
       );
     }
 
+    // Apply active filters
+    activeFilters.forEach(filter => {
+      if (filter.type === 'genre') {
+        filtered = filtered.filter(item => 
+          item.genre?.toLowerCase() === filter.value.toLowerCase()
+        );
+      } else if (filter.type === 'year') {
+        const [startYear, endYear] = filter.value.split('-').map(Number);
+        filtered = filtered.filter(item => 
+          item.year && item.year >= startYear && item.year <= endYear
+        );
+      } else if (filter.type === 'type') {
+        filtered = filtered.filter(item => 
+          item.type === filter.value
+        );
+      }
+    });
+
+    console.log('Filtered results:', filtered.length);
     setSearchResults(filtered);
-  }, [searchQuery, allItems]);
+  }, [searchQuery, activeFilters, allItems]);
 
   const handleSearch = (e: React.ChangeEvent<HTMLInputElement>) => {
     setSearchQuery(e.target.value);
@@ -105,6 +154,16 @@ const Search = () => {
   const handleClearSearch = () => {
     setSearchQuery('');
     setActiveFilters([]);
+  };
+
+  const addFilter = (label: string, type: 'genre' | 'year' | 'type', value: string) => {
+    const newFilter: Filter = {
+      id: Date.now().toString(),
+      label,
+      type,
+      value
+    };
+    setActiveFilters(prev => [...prev, newFilter]);
   };
 
   const removeFilter = (id: string) => {
@@ -116,16 +175,74 @@ const Search = () => {
   };
 
   const handleEdit = (item: LibraryItem) => {
-    // Edit functionality - modal'da edit mode açılacak
     setSelectedItem(item);
   };
 
-  const toggleFavorite = (id: number) => {
-    setSearchResults(prev =>
-      prev.map(item =>
-        item.id === id ? { ...item, isFavorite: !item.isFavorite } : item
-      )
-    );
+  // Toggle favorite with backend
+  const toggleFavorite = async (id: number) => {
+    const item = allItems.find(i => i.id === id);
+    if (!item) return;
+
+    const previousFavoriteStatus = item.isFavorite;
+
+    try {
+      console.log('Toggle favorite for item:', id, 'Current status:', previousFavoriteStatus);
+
+      // Optimistic update
+      setAllItems(prevItems =>
+        prevItems.map(item =>
+          item.id === id ? { ...item, isFavorite: !item.isFavorite } : item
+        )
+      );
+
+      setSearchResults(prevResults =>
+        prevResults.map(item =>
+          item.id === id ? { ...item, isFavorite: !item.isFavorite } : item
+        )
+      );
+
+      // Backend call
+      const response = await libraryService.toggleFavorite(id);
+      
+      console.log('Backend response:', response);
+
+      // Sync with backend response
+      if (response) {
+        const newFavoriteStatus = response.favorite !== undefined ? response.favorite : response.isFavorite;
+        
+        setAllItems(prevItems =>
+          prevItems.map(item =>
+            item.id === id ? { ...item, isFavorite: newFavoriteStatus } : item
+          )
+        );
+
+        setSearchResults(prevResults =>
+          prevResults.map(item =>
+            item.id === id ? { ...item, isFavorite: newFavoriteStatus } : item
+          )
+        );
+
+        console.log('Favorite toggled successfully');
+      }
+
+    } catch (error: any) {
+      console.error('Error toggling favorite:', error);
+      
+      // Rollback on error
+      setAllItems(prevItems =>
+        prevItems.map(item =>
+          item.id === id ? { ...item, isFavorite: previousFavoriteStatus } : item
+        )
+      );
+
+      setSearchResults(prevResults =>
+        prevResults.map(item =>
+          item.id === id ? { ...item, isFavorite: previousFavoriteStatus } : item
+        )
+      );
+      
+      alert(error.message || 'Failed to toggle favorite. Please try again.');
+    }
   };
 
   const handleCloseModal = () => {
@@ -133,21 +250,105 @@ const Search = () => {
   };
 
   const handleUpdateItem = (updatedItem: LibraryItem) => {
-    setSearchResults(prev =>
-      prev.map(item =>
+    setAllItems(prevItems =>
+      prevItems.map(item =>
+        item.id === updatedItem.id ? updatedItem : item
+      )
+    );
+    setSearchResults(prevResults =>
+      prevResults.map(item =>
         item.id === updatedItem.id ? updatedItem : item
       )
     );
     setSelectedItem(null);
   };
 
-  const handleDeleteItem = (id: number) => {
-    setSearchResults(prev => prev.filter(item => item.id !== id));
+  const handleDeleteItem = async (id: number) => {
+    try {
+      await libraryService.deleteItem(id);
+      
+      setAllItems(prevItems => prevItems.filter(item => item.id !== id));
+      setSearchResults(prevResults => prevResults.filter(item => item.id !== id));
+      
+      console.log('Item deleted successfully');
+    } catch (error) {
+      console.error('Error deleting item:', error);
+      alert('Failed to delete item');
+    }
   };
 
   const renderStars = (rating: number) => {
     return '⭐'.repeat(rating);
   };
+
+  // Loading state
+  if (loading) {
+    return (
+      <div className="search-content">
+        <div style={{
+          display: 'flex',
+          justifyContent: 'center',
+          alignItems: 'center',
+          minHeight: '400px',
+          flexDirection: 'column',
+          gap: '16px'
+        }}>
+          <div style={{
+            width: '48px',
+            height: '48px',
+            border: '4px solid #f3f4f6',
+            borderTop: '4px solid #667eea',
+            borderRadius: '50%',
+            animation: 'spin 1s linear infinite'
+          }}></div>
+          <p style={{ color: '#718096', fontSize: '14px' }}>Loading your library...</p>
+        </div>
+        <style>{`
+          @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+          }
+        `}</style>
+      </div>
+    );
+  }
+
+  // Error state
+  if (error) {
+    return (
+      <div className="search-content">
+        <div style={{
+          background: 'white',
+          borderRadius: '12px',
+          padding: '40px',
+          textAlign: 'center',
+          boxShadow: '0 1px 3px rgba(0,0,0,0.08)',
+          margin: '40px'
+        }}>
+          <div style={{ fontSize: '48px', marginBottom: '16px' }}>❌</div>
+          <h3 style={{ fontSize: '20px', fontWeight: '700', color: '#1a202c', marginBottom: '8px' }}>
+            Error Loading Library
+          </h3>
+          <p style={{ color: '#718096', marginBottom: '24px' }}>{error}</p>
+          <button 
+            onClick={loadAllItems}
+            style={{
+              padding: '12px 24px',
+              background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+              color: 'white',
+              border: 'none',
+              borderRadius: '8px',
+              fontSize: '14px',
+              fontWeight: '600',
+              cursor: 'pointer'
+            }}
+          >
+            Retry
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="search-content">
@@ -167,7 +368,7 @@ const Search = () => {
         <input
           type="text"
           className="search-input"
-          placeholder="Search by title, author, director..."
+          placeholder="Search by title, author, director, artist, genre..."
           value={searchQuery}
           onChange={handleSearch}
         />
@@ -175,7 +376,7 @@ const Search = () => {
 
       {/* Results Count */}
       <div className="results-info">
-        <p>Found <strong>{searchResults.length}</strong> results matching your search criteria</p>
+        <p>Found <strong>{searchResults.length}</strong> results{searchQuery && ` for "${searchQuery}"`}</p>
       </div>
 
       {/* Active Filters */}
@@ -212,8 +413,10 @@ const Search = () => {
                   {item.director && `Director: ${item.director}`}
                   {item.author && `Author: ${item.author}`}
                   {item.artist && `Artist: ${item.artist}`}
+                  {item.creator && `Creator: ${item.creator}`}
                   {item.year && ` • ${item.year}`}
                   {item.duration && ` • ${item.duration} min`}
+                  {item.seasons && ` • ${item.seasons} seasons`}
                 </p>
                 <p className="result-genre">
                   {item.genre && `Genre: ${item.genre}`}
@@ -238,7 +441,9 @@ const Search = () => {
           ))
         ) : (
           <div className="no-results">
-            <p>🔍 No results found. Try adjusting your search or filters.</p>
+            <div style={{ fontSize: '48px', marginBottom: '16px' }}>🔍</div>
+            <h3>No results found</h3>
+            <p>Try adjusting your search or filters</p>
           </div>
         )}
       </div>

@@ -12,7 +12,7 @@ public class AddTVSeriesRequest {
     // API veya Manuel
     private String imdbId;
 
-    // Series Özel
+    // Series Ã–zel
     private String creator;
     private Integer seasonCount;
     private Integer episodeCount;

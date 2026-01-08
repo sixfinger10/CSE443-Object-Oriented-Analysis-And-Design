@@ -1,7 +1,6 @@
 package com.visionsoft.plms.controller;
 
 import com.visionsoft.plms.dto.AddMovieRequest;
-import com.visionsoft.plms.dto.UpdateMovieRequest;
 import com.visionsoft.plms.entity.Movie;
 import com.visionsoft.plms.repository.MovieRepository;
 import com.visionsoft.plms.service.MovieService;
@@ -22,10 +21,9 @@ public class MovieController {
         this.movieRepository = movieRepository;
     }
 
-    // --- GÜNCELLENDİ: Sadece giriş yapan kullanıcının filmlerini getirir ---
     @GetMapping
-    public ResponseEntity<List<Movie>> getAllMovies(@RequestHeader("X-User-Id") Long userId) {
-        return ResponseEntity.ok(movieRepository.findByUserId(userId));
+    public List<Movie> getAllMovies() {
+        return movieRepository.findAll();
     }
 
     @PostMapping
@@ -33,26 +31,26 @@ public class MovieController {
             @RequestBody AddMovieRequest request,
             @RequestHeader("X-User-Id") Long userId) {
 
-        System.out.println("Film Ekleme İsteği - User ID: " + userId);
+        System.out.println("Film Ekleme Ä°steÄŸi - User ID: " + userId);
         Movie savedMovie = movieService.addMovie(request, userId);
         return ResponseEntity.ok(savedMovie);
     }
 
-    // --- SİLME ---
+    // --- SÄ°LME ---
     @DeleteMapping("/{id}")
     public ResponseEntity<String> deleteMovie(
             @PathVariable Long id,
             @RequestHeader("X-User-Id") Long userId) {
 
         movieService.deleteMovie(id, userId);
-        return ResponseEntity.ok("Film başarıyla silindi. ID: " + id);
+        return ResponseEntity.ok("Film baÅŸarÄ±yla silindi. ID: " + id);
     }
 
-    // --- GÜNCELLEME ---
+    // --- GÃœNCELLEME ---
     @PutMapping("/{id}")
     public ResponseEntity<Movie> updateMovie(
             @PathVariable Long id,
-            @RequestBody UpdateMovieRequest request,
+            @RequestBody com.visionsoft.plms.dto.UpdateMovieRequest request,
             @RequestHeader("X-User-Id") Long userId) {
 
         Movie updatedMovie = movieService.updateMovie(id, request, userId);

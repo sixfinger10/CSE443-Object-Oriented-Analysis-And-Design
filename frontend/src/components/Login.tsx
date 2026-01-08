@@ -1,19 +1,13 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import './Login.css';
-import axios from 'axios';
-
-const API_URL = 'http://localhost:3000/api/auth/login';
-
-interface LoginFormData {
-  usernameOrEmail: string;
-  password: string;
-}
+import authService from '../services/auth.service';
+import { LoginRequest } from '../types/auth.types';
 
 const Login: React.FC = () => {
   const navigate = useNavigate();
   
-  const [formData, setFormData] = useState<LoginFormData>({
+  const [formData, setFormData] = useState<LoginRequest>({
     usernameOrEmail: '',
     password: '',
   });
@@ -34,6 +28,7 @@ const Login: React.FC = () => {
     e.preventDefault();
     setError('');
     
+    // Frontend validation
     if (!formData.usernameOrEmail || !formData.password) {
       setError('Please fill in all fields.');
       return;
@@ -41,53 +36,45 @@ const Login: React.FC = () => {
 
     setIsLoading(true);
 
-    // TEST KULLANICISI - Hard-coded kontrol
-    if (
-      formData.usernameOrEmail === 'test@plms.com' && 
-      formData.password === 'Test1234!'
-    ) {
-      // Test kullanıcısı başarılı
-      localStorage.setItem('authToken', 'test-token-123');
-      localStorage.setItem('userName', 'Sarah Johnson');
-      localStorage.setItem('userEmail', 'test@plms.com');
-      
-      setIsLoading(false);
-      navigate('/dashboard');
-      return;
-    }
-
-    // Gerçek backend çağrısı (test kullanıcısı değilse)
     try {
-      const response = await axios.post(API_URL, {
-        usernameOrEmail: formData.usernameOrEmail,
-        password: formData.password,
-      });
-
-      console.log('Login successful:', response.data);
+      // AuthService kullanarak login yap
+      // ✅ Service içinde token ve user bilgileri localStorage'a kaydedilecek
+      const response = await authService.login(formData);
       
-      if (response.data.token) {
-        localStorage.setItem('authToken', response.data.token);
-        localStorage.setItem('userName', response.data.user?.name || 'User');
-        localStorage.setItem('userEmail', response.data.user?.email || '');
+      // Backend'den success:true geldi mi?
+      if (response.success) {
+        console.log('✅ Login successful:', response);
+        
+        // ✅ DEBUG: Token ve user bilgilerini kontrol et
+        const savedToken = localStorage.getItem('authToken');
+        const savedUser = localStorage.getItem('user');
+        
+        console.log('✅ Token saved:', savedToken ? 'YES' : 'NO');
+        console.log('✅ User saved:', savedUser ? 'YES' : 'NO');
+        
+        if (savedToken && savedUser) {
+          const user = JSON.parse(savedUser);
+          console.log('✅ User data:', user);
+        }
+        
+        // Dashboard'a yönlendir
+        navigate('/dashboard');
+      } else {
+        // success:false ise hata mesajını göster
+        setError(response.message || 'Login failed');
       }
-      
-      navigate('/dashboard');
       
     } catch (err: any) {
-      console.error('Login error:', err);
-      if (err.response) {
-        setError(err.response.data.message || 'Login failed. Please check your credentials.');
-      } else {
-        setError('Invalid username/email or password.');
-      }
+      console.error('❌ Login error:', err);
+      setError(err.message || 'Login failed. Please try again.');
     } finally {
       setIsLoading(false);
     }
   };
 
   const handleForgotPassword = () => {
-  navigate('/forgot-password');
-};
+    navigate('/forgot-password');
+  };
 
   const handleCreateAccount = () => {
     navigate('/register');
@@ -135,6 +122,7 @@ const Login: React.FC = () => {
                 onChange={handleChange}
                 placeholder="Enter your username or email"
                 disabled={isLoading}
+                autoComplete="username"
                 required
               />
             </div>
@@ -163,6 +151,7 @@ const Login: React.FC = () => {
                 onChange={handleChange}
                 placeholder="Enter your password"
                 disabled={isLoading}
+                autoComplete="current-password"
                 required
               />
               <button
@@ -170,6 +159,7 @@ const Login: React.FC = () => {
                 className="password-toggle"
                 onClick={() => setShowPassword(!showPassword)}
                 disabled={isLoading}
+                aria-label="Toggle password visibility"
               >
                 {showPassword ? '👁️' : '👁️‍🗨️'}
               </button>

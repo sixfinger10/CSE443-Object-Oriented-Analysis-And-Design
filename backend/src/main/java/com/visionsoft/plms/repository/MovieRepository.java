@@ -13,27 +13,26 @@ import java.util.Optional;
 @Repository
 public interface MovieRepository extends JpaRepository<Movie, Long> {
 
-    // --- YENİ EKLENEN: User ID'ye göre liste ---
-    List<Movie> findByUserId(Long userId);
-
-    // 1. Service için: IMDb ID ve User kontrolü
+    // 1. Service iÃ§in: IMDb ID ve User kontrolÃ¼
     Optional<Movie> findByImdbIdAndUser(String imdbId, User user);
 
-    // 2. Dashboard için
+    // 2. Dashboard iÃ§in
     @Query("SELECT COUNT(m) FROM Movie m WHERE m.user.id = :userId")
     Long countByUserId(@Param("userId") Long userId);
 
-    // 3. Manuel ekleme kontrolü (İsim ve Yönetmen)
+    // 3. Manuel ekleme kontrolÃ¼ (Ä°sim ve YÃ¶netmen)
     @Query("SELECT m FROM Movie m WHERE m.user.id = :userId AND m.title = :title AND m.director = :director")
     List<Movie> findByUserIdAndTitleAndDirector(@Param("userId") Long userId,
                                                 @Param("title") String title,
                                                 @Param("director") String director);
 
-    // --- 4. Sadece İsim Kontrolü ---
+    // --- 4. HEAD'DEN GELEN (KRÄ°TÄ°K): Sadece Ä°sim KontrolÃ¼ ---
+    // YÃ¶netmen girilmediyse manuel eklemelerde duplicate'i Ã¶nleyen metod
     @Query("SELECT m FROM Movie m WHERE m.user.id = :userId AND m.title = :title")
     List<Movie> findByUserIdAndTitle(@Param("userId") Long userId, @Param("title") String title);
 
-    // --- 5. Detaylı Duplicate Kontrolü ---
+    // --- 5. MAIN'DEN GELEN: DetaylÄ± Duplicate KontrolÃ¼ ---
+    // (Åžu an kullanmasak bile main'de olduÄŸu iÃ§in silmeyelim, dursun)
     @Query("SELECT m FROM Movie m WHERE m.user.id = :userId " +
             "AND m.title = :title " +
             "AND m.director = :director " +

@@ -22,10 +22,9 @@ public class MusicController {
         this.musicRepository = musicRepository;
     }
 
-    // --- GÜNCELLENDİ: Sadece giriş yapan kullanıcının müziklerini getirir ---
     @GetMapping
-    public ResponseEntity<List<Music>> getAllMusic(@RequestHeader("X-User-Id") Long userId) {
-        return ResponseEntity.ok(musicRepository.findByUserId(userId));
+    public List<Music> getAllMusic() {
+        return musicRepository.findAll();
     }
 
     @PostMapping
@@ -40,7 +39,7 @@ public class MusicController {
             @PathVariable Long id,
             @RequestHeader("X-User-Id") Long userId) {
         musicService.deleteMusic(id, userId);
-        return ResponseEntity.ok("Müzik başarıyla silindi. ID: " + id);
+        return ResponseEntity.ok("MÃ¼zik baÅŸarÄ±yla silindi. ID: " + id);
     }
 
     @PutMapping("/{id}")

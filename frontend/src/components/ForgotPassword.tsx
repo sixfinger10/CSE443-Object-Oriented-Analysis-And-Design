@@ -1,12 +1,12 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import authService from '../services/auth.service';
 import './ForgotPassword.css';
 
 const ForgotPassword = () => {
   const navigate = useNavigate();
   const [email, setEmail] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const [isSuccess, setIsSuccess] = useState(false);
   const [error, setError] = useState('');
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -25,48 +25,28 @@ const ForgotPassword = () => {
 
     setIsLoading(true);
 
-    // Simulate API call
-    setTimeout(() => {
+    try {
+      const response = await authService.forgotPassword({ email });
+      
+      if (response.success) {
+        console.log('✅ Reset code sent:', response);
+        // Kod gönderildi, verify sayfasına git
+        alert('Reset code sent to your email! Please check your inbox.');
+        navigate('/verify-code', { state: { email } });
+      } else {
+        setError(response.message || 'Failed to send reset code');
+      }
+    } catch (err: any) {
+      console.error('❌ Forgot password error:', err);
+      setError(err.message || 'An error occurred. Please try again.');
+    } finally {
       setIsLoading(false);
-      setIsSuccess(true);
-      console.log('Password reset email sent to:', email);
-    }, 1500);
+    }
   };
 
   const handleBackToLogin = () => {
     navigate('/login');
   };
-
-  if (isSuccess) {
-    return (
-      <div className="forgot-password-container">
-        <div className="forgot-password-background"></div>
-        
-        <div className="forgot-password-card">
-          <div className="success-icon">✓</div>
-          <h1>Check Your Email</h1>
-          <p className="success-message">
-            We've sent a password reset link to <strong>{email}</strong>
-          </p>
-          <p className="helper-text">
-            Please check your inbox and click on the link to reset your password. 
-            If you don't see the email, check your spam folder.
-          </p>
-          
-          <button className="btn-back-to-login" onClick={handleBackToLogin}>
-            ← Back to Login
-          </button>
-
-          <div className="resend-section">
-            <p>Didn't receive the email?</p>
-            <button className="btn-resend" onClick={() => setIsSuccess(false)}>
-              Resend Link
-            </button>
-          </div>
-        </div>
-      </div>
-    );
-  }
 
   return (
     <div className="forgot-password-container">
@@ -83,7 +63,7 @@ const ForgotPassword = () => {
             </svg>
           </div>
           <h1>Forgot Password?</h1>
-          <p>No worries! Enter your email and we'll send you reset instructions.</p>
+          <p>No worries! Enter your email and we'll send you a reset code.</p>
         </div>
 
         <form onSubmit={handleSubmit} className="forgot-password-form">
@@ -94,10 +74,14 @@ const ForgotPassword = () => {
               id="email"
               name="email"
               value={email}
-              onChange={(e) => setEmail(e.target.value)}
+              onChange={(e) => {
+                setEmail(e.target.value);
+                if (error) setError('');
+              }}
               placeholder="Enter your email address"
               disabled={isLoading}
               required
+              autoFocus
             />
           </div>
 
@@ -108,12 +92,16 @@ const ForgotPassword = () => {
           )}
 
           <button type="submit" className="btn-send-link" disabled={isLoading}>
-            {isLoading ? 'Sending...' : '📧 Send Reset Link'}
+            {isLoading ? 'Sending...' : '📧 Send Reset Code'}
           </button>
         </form>
 
         <div className="forgot-password-footer">
-          <button className="btn-back-link" onClick={handleBackToLogin}>
+          <button 
+            className="btn-back-link" 
+            onClick={handleBackToLogin}
+            disabled={isLoading}
+          >
             ← Back to Login
           </button>
         </div>
